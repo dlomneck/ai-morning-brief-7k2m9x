@@ -2,6 +2,22 @@
 
 A weekday, roughly three-minute audio brief for an engineering leader moving a company toward an AI-driven SDLC. It collects public RSS items, asks Gemini to select and script the most relevant developments, creates podcast-style narration, converts it to MP3, and publishes an RSS feed on GitHub Pages.
 
+## Sources
+
+The initial source set is deliberately focused on engineering practice, AI development tools, technical leadership, and high-signal community discussion:
+
+- Pragmatic Engineer
+- Latent Space
+- Simon Willison
+- GitHub Changelog
+- Martin Fowler
+- One Useful Thing
+- Import AI
+- Addy Osmani
+- Hacker News (AI agents and coding agents; 100-point minimum)
+
+The selector takes at most three recent items per source and spreads the input across sources before Gemini chooses what deserves airtime. Tidy First and Lenny's Newsletter are left out of the first run because they are less consistently focused on AI-driven SDLC; The Batch is also held back to limit broad AI news overlap. Add them later if the first week shows a meaningful gap.
+
 ## Public information and privacy
 
 This repository and the podcast feed are public. Anyone with the feed URL can listen and download episodes. The script sends only public RSS titles, excerpts, and links to Gemini; do not add company information or private sources. Google's Gemini API free tier may use submitted content to improve its products.
@@ -19,7 +35,7 @@ The workflow runs weekdays at 09:30 UTC. GitHub can delay scheduled runs. It ret
 
 ## Models and costs
 
-The script uses Gemini 3.5 Flash-Lite for the narration draft and Gemini 3.8 Flash TTS for higher-fidelity speech. Both currently list free API access; free-tier quotas and terms can change. The workflow uses GitHub Actions and Pages. The MP3 conversion uses FFmpeg on the GitHub runner.
+The script uses Gemini 3.5 Flash-Lite for the narration draft and Gemini 3.8 Flash TTS for higher-fidelity speech. Both currently list free API access; free-tier quotas and terms can change. The workflow uses GitHub Actions and Pages. MP3 conversion uses FFmpeg on the GitHub runner.
 
 ## Tuning
 
