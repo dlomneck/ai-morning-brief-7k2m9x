@@ -1,6 +1,6 @@
 # Morning AI Engineering Brief
 
-A weekday, roughly three-minute audio brief for an engineering leader moving a company toward an AI-driven SDLC. It collects public RSS items, asks Gemini to select and script the most relevant developments, creates podcast-style narration, converts it to MP3, and publishes an RSS feed on GitHub Pages.
+A weekday, editorially selective audio brief for an engineering leader moving a company toward an AI-driven SDLC. It collects public RSS items, asks Gemini whether the day has enough useful material, creates a conversational two-host episode when warranted, converts it to MP3, and publishes an RSS feed on GitHub Pages. Episodes aim for a commute-length listen when the news supports it; thin days are skipped and strong but limited news gets a shorter episode.
 
 ## Sources
 
@@ -35,8 +35,8 @@ The workflow runs weekdays at 09:30 UTC. GitHub can delay scheduled runs. It ret
 
 ## Models and costs
 
-The script uses Gemini 3.5 Flash-Lite for the narration draft and Gemini 3.8 Flash TTS for higher-fidelity speech. Both currently list free API access; free-tier quotas and terms can change. The workflow uses GitHub Actions and Pages. MP3 conversion uses FFmpeg on the GitHub runner.
+The script uses Gemini 3.5 Flash-Lite for editorial selection and dialogue scripting and Gemini 3.8 Flash TTS for two-speaker narration. The show notes link only the sources discussed in that episode. Cover art is published with the feed. Both currently list free API access; free-tier quotas and terms can change. The workflow uses GitHub Actions and Pages. MP3 conversion uses FFmpeg on the GitHub runner.
 
 ## Tuning
 
-Edit `FEEDS`, `PROMPT`, `LOOKBACK_HOURS`, `VOICE`, or the model constants in `brief.py`. The feed includes source links in each episode's show notes.
+Edit `FEEDS`, `PROMPT`, `LOOKBACK_HOURS`, or the model constants in `brief.py`. The cover art is in `artwork.svg`; the workflow converts it to podcast-compatible PNG for the feed.
