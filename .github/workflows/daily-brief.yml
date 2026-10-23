@@ -2,8 +2,9 @@ name: Daily AI Brief
 
 on:
   schedule:
-    # 09:30 UTC = 5:30 AM Eastern during daylight time / 4:30 AM during standard time.
-    - cron: "30 9 * * 1-5"
+    # Start at 5:30 AM Eastern on weekdays so the MP3 has time to publish before a 6 AM commute.
+    - cron: "30 5 * * 1-5"
+      timezone: "America/New_York"
   workflow_dispatch: {}
 
 permissions:
