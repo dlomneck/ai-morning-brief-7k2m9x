@@ -15,9 +15,9 @@ The initial source set is deliberately focused on engineering practice, AI devel
 - AWS AI Blog
 - OpenAI News (the model filters for engineering relevance)
 - Addy Osmani
-- Hacker News (AI agents and coding agents; 100-point minimum)
+- Hacker News (official front-page feed; AI/SDLC relevance filtered by the editor)
 
-The selector takes at most three recent items per source and spreads the input across sources before Gemini chooses what deserves airtime. Import AI was removed after repeated HTTP 403 responses; AWS AI Blog was added for Bedrock and applied-AI engineering coverage. OpenAI News adds another first-party signal, with strict filtering so model announcements only appear when they affect the SDLC. Hacker News is retried on transient server errors. Tidy First, Lenny's Newsletter, and The Batch remain out to keep the signal focused.
+The selector takes at most three recent items per source and spreads the input across sources before Gemini chooses what deserves airtime. Import AI was removed after repeated HTTP 403 responses; AWS AI Blog was added for Bedrock and applied-AI engineering coverage. OpenAI News adds another first-party signal, with strict filtering so model announcements only appear when they affect the SDLC. The custom Hacker News RSS service repeatedly returned 502, so it now uses Hacker News's official front-page RSS feed, with the editorial prompt filtering for AI/SDLC relevance. Tidy First, Lenny's Newsletter, and The Batch remain out to keep the signal focused.
 
 ## Public information and privacy
 
