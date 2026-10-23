@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 TZ = "America/New_York"
 TEXT_MODEL = "gemini-3.5-flash-lite"
-TTS_MODEL = "gemini-3.8-flash-lite-tts"
+TTS_MODEL = "gemini-3.8-flash-tts"
 VOICE = "Kore"
 KEEP = 14
 LOOKBACK_HOURS = 96
