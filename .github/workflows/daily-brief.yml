@@ -24,7 +24,8 @@ jobs:
       - name: Install MP3 encoder
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+          sudo apt-get install --yes --no-install-recommends ffmpeg imagemagick
+          convert -background none artwork.svg -resize 1400x1400 site/artwork.png
 
       - name: Fetch previous podcast site
         env:
