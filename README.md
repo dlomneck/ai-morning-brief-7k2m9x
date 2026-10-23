@@ -12,11 +12,12 @@ The initial source set is deliberately focused on engineering practice, AI devel
 - GitHub Changelog
 - Martin Fowler
 - One Useful Thing
-- Import AI
+- AWS AI Blog
+- OpenAI News (the model filters for engineering relevance)
 - Addy Osmani
 - Hacker News (AI agents and coding agents; 100-point minimum)
 
-The selector takes at most three recent items per source and spreads the input across sources before Gemini chooses what deserves airtime. Tidy First and Lenny's Newsletter are left out of the first run because they are less consistently focused on AI-driven SDLC; The Batch is also held back to limit broad AI news overlap. Add them later if the first week shows a meaningful gap.
+The selector takes at most three recent items per source and spreads the input across sources before Gemini chooses what deserves airtime. Import AI was removed after repeated HTTP 403 responses; AWS AI Blog was added for Bedrock and applied-AI engineering coverage. OpenAI News adds another first-party signal, with strict filtering so model announcements only appear when they affect the SDLC. Hacker News is retried on transient server errors. Tidy First, Lenny's Newsletter, and The Batch remain out to keep the signal focused.
 
 ## Public information and privacy
 
