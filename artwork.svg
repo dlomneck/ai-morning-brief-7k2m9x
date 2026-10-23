@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1400" viewBox="0 0 1400 1400">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#092f3b"/><stop offset="1" stop-color="#146b70"/></linearGradient><linearGradient id="gold" x2="0" y2="1"><stop stop-color="#ffe18a"/><stop offset="1" stop-color="#f6a94b"/></linearGradient></defs>
+<rect width="1400" height="1400" rx="190" fill="url(#bg)"/>
+<circle cx="700" cy="565" r="330" fill="#0b4650" stroke="#57c4b1" stroke-width="18"/>
+<path d="M440 590v-52c0-145 115-260 260-260s260 115 260 260v52" fill="none" stroke="#f7c96c" stroke-width="42" stroke-linecap="round"/>
+<rect x="405" y="540" width="115" height="220" rx="55" fill="url(#gold)"/><rect x="880" y="540" width="115" height="220" rx="55" fill="url(#gold)"/>
+<path d="M515 670c0 135 85 220 185 220h54" fill="none" stroke="#f7c96c" stroke-width="26" stroke-linecap="round"/><circle cx="785" cy="890" r="28" fill="#f7c96c"/>
+<rect x="520" y="480" width="360" height="235" rx="95" fill="#f5f0df"/>
+<circle cx="625" cy="585" r="28" fill="#133f4a"/><circle cx="775" cy="585" r="28" fill="#133f4a"/>
+<path d="M625 650q75 72 150 0" fill="none" stroke="#e69c45" stroke-width="22" stroke-linecap="round"/>
+<path d="M380 980h640" stroke="#f7c96c" stroke-width="18" stroke-linecap="round" opacity=".8"/>
+<text x="700" y="1085" text-anchor="middle" fill="#fff7e7" font-family="Arial,sans-serif" font-size="78" font-weight="700" letter-spacing="3">MORNING AI BRIEF</text>
+<text x="700" y="1160" text-anchor="middle" fill="#b8e6d9" font-family="Arial,sans-serif" font-size="38" letter-spacing="6">ENGINEERING • SIGNAL • PRACTICE</text>
+</svg>
