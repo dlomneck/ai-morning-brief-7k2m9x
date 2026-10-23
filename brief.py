@@ -22,7 +22,8 @@ FEEDS = [
     ("GitHub Changelog", "https://github.blog/changelog/feed/"),
     ("Martin Fowler", "https://martinfowler.com/feed.atom"),
     ("One Useful Thing", "https://www.oneusefulthing.org/feed"),
-    ("Import AI", "https://importai.substack.com/feed"),
+    ("AWS AI Blog", "https://aws.amazon.com/blogs/ai/feed"),
+    ("OpenAI News", "https://openai.com/news/rss.xml"),
     ("Addy Osmani", "https://addyosmani.com/feed.xml"),
     ("Hacker News", "https://hnrss.org/newest?q=AI+agents+OR+agentic+OR+coding+agent&points=100"),
 ]
@@ -45,8 +46,18 @@ def request_json(url, payload, key, timeout=180):
             if attempt < 2: time.sleep(2 ** attempt); continue
             raise RuntimeError(f"Gemini network error: {e}") from e
 def fetch(url):
-    req=urllib.request.Request(url,headers={"User-Agent":"MorningAIBrief/1.0"})
-    with urllib.request.urlopen(req,timeout=30) as r: return r.read()
+    req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 (compatible; MorningAIBrief/1.0; +https://github.com/dlomneck/ai-morning-brief-7k2m9x)"})
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req,timeout=30) as r: return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code in (429,500,502,503,504) and attempt<2:
+                time.sleep(2**attempt);continue
+            raise
+        except (urllib.error.URLError,TimeoutError):
+            if attempt<2:
+                time.sleep(2**attempt);continue
+            raise
 def tag(e): return e.tag.rsplit("}",1)[-1].lower()
 def child(e,names):
     for c in e:
@@ -135,7 +146,7 @@ def audio(turns,key,wav):
         if not text:continue
         style=("Warm, upbeat, engaged podcast host; natural conversational pacing, clear articulation." if speaker=="Host" else "Thoughtful, candid, grounded analyst; conversational, clear, measured emphasis.")
         content.append({"type":"text","text":text,"annotations":[{"type":"speech_metadata","speaker":speaker,"style":style}]})
-    payload={"model":TTS_MODEL,"input":[{"type":"user_input","content":content}],"response_format":{"type":"audio"},"generation_config":{"speech_config":{"mode":"conversational","speakers":[{"speaker":"Host","voice":"Puck"},{"speaker":"Analyst","voice":"Kore"}]}}}
+    payload={"model":TTS_MODEL,"input":[{"type":"user_input","content":content}],"response_format":{"type":"audio"},"generation_config":{"speech_config":{"speakers":[{"speaker":"Host","voice":"Puck"},{"speaker":"Analyst","voice":"Kore"}]}}}
     r=request_json("https://generativelanguage.googleapis.com/v1beta/interactions",payload,key,300)
     data=None
     for step in r.get("steps",[]):
