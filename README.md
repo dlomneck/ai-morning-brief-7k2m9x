@@ -32,7 +32,7 @@ This repository and the podcast feed are public. Anyone with the feed URL can li
 5. After the first run creates the `gh-pages` branch, open **Settings → Pages** and choose **Deploy from a branch**, branch `gh-pages`, folder `/ (root)`.
 6. The feed URL is `https://dlomneck.github.io/ai-morning-brief-7k2m9x/feed.xml`. Add it to Apple Podcasts or Overcast using “Add a Show by URL.”
 
-The workflow runs weekdays at 09:30 UTC. GitHub can delay scheduled runs. It retains the latest 14 MP3 episodes. A public repository and public Pages site are required for this self-hosted feed.
+The workflow is scheduled weekdays at 5:30 AM America/New_York, with daylight saving handled by GitHub's timezone-aware schedule. This gives the MP3 a buffer before a 6 AM commute, though GitHub can delay scheduled runs. It retains the latest 14 MP3 episodes. A public repository and public Pages site are required for this self-hosted feed.
 
 ## Models and costs
 
