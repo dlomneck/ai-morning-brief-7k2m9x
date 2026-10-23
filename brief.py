@@ -167,6 +167,8 @@ def publish(base,episode,mp3,filename,items,seen,now):
 <description>{esc(DESCRIPTION)}</description><language>en-us</language>
 <itunes:author>Morning AI Brief</itunes:author><itunes:explicit>false</itunes:explicit>
 <itunes:block>Yes</itunes:block><itunes:category text="Technology"/>
+<itunes:image href="{esc(base)}/artwork.png"/>
+<image><url>{esc(base)}/artwork.png</url><title>{esc(TITLE)}</title><link>{esc(base)}/</link></image>
 {MARKER}'''
     with open(feed,"w",encoding="utf-8") as f:f.write(header+"\n"+"\n".join(eps)+"\n</channel>\n</rss>\n")
     for i in items:seen[i["link"].lower().rstrip("/")]=now.isoformat()
@@ -174,7 +176,7 @@ def publish(base,episode,mp3,filename,items,seen,now):
     seen={u:d for u,d in seen.items() if d>=cutoff}
     with open(os.path.join(SITE,"seen.json"),"w") as f:json.dump(seen,f)
     open(os.path.join(SITE,".nojekyll"),"w").close()
-    with open(os.path.join(SITE,"index.html"),"w") as f:f.write(f'<!doctype html><meta charset="utf-8"><title>{esc(TITLE)}</title><h1>{esc(TITLE)}</h1><p>{esc(DESCRIPTION)}</p><a href="feed.xml">Podcast feed</a>')
+    with open(os.path.join(SITE,"index.html"),"w") as f:f.write(f'<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>{esc(TITLE)}</title><main style="font:18px system-ui;max-width:760px;margin:3rem auto;padding:1rem"><img src="artwork.png" alt="Morning AI Brief cover art" width="220" style="border-radius:24px"><h1>{esc(TITLE)}</h1><p>{esc(DESCRIPTION)}</p><a href="feed.xml">Subscribe to the podcast feed</a></main>')
 def main():
     key=os.environ.get("GEMINI_API_KEY")
     if not key:sys.exit("Missing GEMINI_API_KEY repository secret.")
