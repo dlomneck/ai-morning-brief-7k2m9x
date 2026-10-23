@@ -185,12 +185,13 @@ def main():
     os.makedirs(SITE,exist_ok=True);path=os.path.join(SITE,"seen.json")
     seen=json.load(open(path,encoding="utf-8")) if os.path.exists(path) else {}
     items=select(collect(now),seen);log(f"SELECTED {len(items)} unseen items")
-    if not items:log("No fresh items; existing feed left unchanged.");return
+    if not items:
+        log("No fresh items; existing episodes retained.")
+        publish(base,None,None,None,[],seen,now);return
     brief=narration(items,now,key)
     if not brief["publish"]:
-        for i in items:seen[i["link"].lower().rstrip("/")]=now.isoformat()
-        with open(path,"w") as f:json.dump(seen,f)
-        log("NO EPISODE: editorial review found no sufficiently valuable story.");return
+        log("NO EPISODE: editorial review found no sufficiently valuable story.")
+        publish(base,None,None,None,items,seen,now);return
     turns=brief["turns"];script=" ".join(t["text"].strip() for t in turns if t.get("text"))
     log(f"EDITORIAL TITLE {brief['title']}")
     log(f"SCRIPT {len(script.split())} words")
