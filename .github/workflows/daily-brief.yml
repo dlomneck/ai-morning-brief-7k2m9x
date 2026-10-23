@@ -25,7 +25,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends ffmpeg imagemagick
-          convert -background none artwork.svg -resize 1400x1400 site/artwork.png
 
       - name: Fetch previous podcast site
         env:
@@ -35,6 +34,7 @@ jobs:
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" site \
             || mkdir -p site
           rm -rf site/.git
+          convert -background none artwork.svg -resize 1400x1400 site/artwork.png
 
       - name: Build today's brief
         env:
