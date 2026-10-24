@@ -17,15 +17,15 @@ concurrency:
 jobs:
   brief:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
       - name: Install MP3 encoder
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg librsvg2-bin
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install --yes --no-install-recommends ffmpeg librsvg2-bin
 
       - name: Fetch previous podcast site
         env:
