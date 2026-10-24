@@ -208,7 +208,7 @@ def old_items(path):
     if not os.path.exists(path):return []
     s=open(path,encoding="utf-8").read(); n=s.find(MARKER)
     return re.findall(r"<item>[\s\S]*?</item>",s[n:] if n>=0 else s)
-def publish(base,episode,mp3,filename,items,seen,now):
+def publish(base,episode,mp3,filename,items,seen,now,seen_items=None):
     os.makedirs(os.path.join(SITE,"episodes"),exist_ok=True)
     feed=os.path.join(SITE,"feed.xml")
     eps=([episode] if episode else [])+old_items(feed);eps=eps[:KEEP]
@@ -228,7 +228,7 @@ def publish(base,episode,mp3,filename,items,seen,now):
 <image><url>{esc(base)}/artwork.png</url><title>{esc(TITLE)}</title><link>{esc(base)}/</link></image>
 {MARKER}'''
     with open(feed,"w",encoding="utf-8") as f:f.write(header+"\n"+"\n".join(eps)+"\n</channel>\n</rss>\n")
-    for i in items:seen[i["link"].lower().rstrip("/")]=now.isoformat()
+    for i in (seen_items or []):seen[i["link"].lower().rstrip("/")]=now.isoformat()
     cutoff=(now-timedelta(days=30)).isoformat()
     seen={u:d for u,d in seen.items() if d>=cutoff}
     with open(os.path.join(SITE,"seen.json"),"w") as f:json.dump(seen,f)
@@ -263,6 +263,7 @@ def main():
     if size<10000:raise RuntimeError("Generated MP3 is unexpectedly small.")
     title=clean(brief["title"],160)
     used=set(int(n) for n in brief.get("used_sources",[]) if str(n).isdigit())
+    used_items=[items[n-1] for n in sorted(used) if 1<=n<=len(items)]
     links="".join(f'<li><a href="{esc(items[n-1]["link"])}">{esc(items[n-1]["title"])}</a> ({esc(items[n-1]["source"])})</li>' for n in sorted(used) if 1<=n<=len(items))
     dialogue="".join(f'<p><strong>{esc(t.get("speaker",""))}:</strong> {esc(t.get("text","").strip())}</p>' for t in turns if t.get("text","").strip())
     notes=cdata(f"<p><strong>Episode transcript</strong></p>{dialogue}<p><strong>Sources</strong></p><ul>{links}</ul>")
@@ -270,5 +271,5 @@ def main():
 <pubDate>{email.utils.format_datetime(now)}</pubDate>
 <enclosure url="{base}/episodes/{fn}" length="{size}" type="audio/mpeg"/>
 <guid isPermaLink="false">{fn}</guid></item>'''
-    publish(base,episode,mp3,fn,items,seen,now);log("DONE")
+    publish(base,episode,mp3,fn,items,seen,now,used_items);log("DONE")
 if __name__=="__main__":main()
