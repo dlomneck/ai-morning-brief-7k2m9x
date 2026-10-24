@@ -129,7 +129,7 @@ def record_feed_health(statuses,now):
         current[name]=row
     with open(path,"w",encoding="utf-8") as f:
         json.dump({"sources":current},f,indent=2,sort_keys=True)
-        f.write("\\n")
+        f.write("\n")
     lines=["## RSS source health","",
            "| Source | Status | Recent items | Consecutive failures |",
            "|---|---:|---:|---:|"]
@@ -141,11 +141,11 @@ def record_feed_health(statuses,now):
         lines.extend(["","**Persistent feed failure:** "+", ".join(new_alerts)+" failed on three consecutive runs."])
     summary=os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
-        with open(summary,"a",encoding="utf-8") as f:f.write("\\n".join(lines)+"\\n")
+        with open(summary,"a",encoding="utf-8") as f:f.write("\n".join(lines)+"\n")
     output=os.environ.get("GITHUB_OUTPUT")
     if output:
         with open(output,"a",encoding="utf-8") as f:
-            f.write("health_alert="+("true" if new_alerts else "false")+"\\n")
+            f.write("health_alert="+("true" if new_alerts else "false")+"\n")
     if new_alerts:
         log("PERSISTENT FEED FAILURE: "+", ".join(new_alerts))
     return new_alerts
