@@ -177,7 +177,7 @@ def publish(base,episode,mp3,filename,items,seen,now):
 <title>{esc(TITLE)}</title><link>{esc(base)}/</link>
 <description>{esc(DESCRIPTION)}</description><language>en-us</language>
 <itunes:author>Morning AI Brief</itunes:author><itunes:explicit>false</itunes:explicit>
-<itunes:block>Yes</itunes:block><itunes:category text="Technology"/>
+<itunes:category text="Technology"/>
 <itunes:image href="{esc(base)}/artwork.png"/>
 <image><url>{esc(base)}/artwork.png</url><title>{esc(TITLE)}</title><link>{esc(base)}/</link></image>
 {MARKER}'''
