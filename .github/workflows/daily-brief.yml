@@ -38,6 +38,7 @@ jobs:
           rsvg-convert -w 1400 -h 1400 artwork.svg -o site/artwork.png
 
       - name: Build today's brief
+        id: build
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SITE_DIR: site
@@ -59,3 +60,9 @@ jobs:
           git commit --quiet -m "Brief $(date -u +%F)"
           git push --quiet --force \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+
+      - name: Alert on persistent RSS source failures
+        if: success() && steps.build.outputs.health_alert == 'true'
+        run: |
+          echo "::error title=Persistent RSS source failure::At least one feed failed on three consecutive runs. See the RSS source health table in this run's summary."
+          exit 1
