@@ -172,7 +172,7 @@ def publish(base,episode,mp3,filename,items,seen,now):
     for fn in os.listdir(epdir):
         if fn.endswith(".mp3") and fn not in keep:os.remove(os.path.join(epdir,fn));log("PRUNED "+fn)
     header=f'''<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/">
 <channel>
 <title>{esc(TITLE)}</title><link>{esc(base)}/</link>
 <description>{esc(DESCRIPTION)}</description><language>en-us</language>
