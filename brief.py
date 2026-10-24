@@ -123,9 +123,7 @@ def record_feed_health(statuses,now):
         if not result["ok"] and failures>=SOURCE_FAILURE_ALERT_AFTER and not alerted:
             alerted=True; new_alerts.append(name)
         row={"status":"ok" if result["ok"] else "failed",
-             "consecutive_failures":failures,"alerted":alerted,
-             "last_checked":now.isoformat()}
-        if result["ok"]:row["recent_items"]=result["recent_items"]
+             "consecutive_failures":failures,"alerted":alerted}
         current[name]=row
     with open(path,"w",encoding="utf-8") as f:
         json.dump({"sources":current},f,indent=2,sort_keys=True)
