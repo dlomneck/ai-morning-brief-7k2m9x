@@ -4,7 +4,7 @@ This document summarizes the public, reusable design of the automated audio-brie
 
 ## Objective
 
-Produce a selective daily audio briefing about developments that can materially affect AI-enabled software delivery and engineering leadership. The output should sound like a relaxed, upbeat two-host podcast, cite sources casually in the narration, and provide links to the discussed sources in the show notes.
+Produce a selective weekday audio briefing about developments that can materially affect AI-enabled software delivery and engineering leadership. The output should sound like a relaxed, upbeat two-host podcast, cite sources casually in the narration, and provide links to the discussed sources in the show notes.
 
 The episode should be as long as the useful material warrants. A commute-length episode is a target when there is enough substance; quiet news days should be skipped, and limited but useful news should make a shorter episode.
 
@@ -12,7 +12,8 @@ The episode should be as long as the useful material warrants. A commute-length 
 
 - `brief.py` collects recent public RSS items, spreads selection across sources, filters them for relevance with Gemini, and skips publication when there is not enough useful news.
 - When an episode is warranted, Gemini writes a two-host dialogue and generates speech audio. FFmpeg converts the audio to MP3.
-- The GitHub Actions workflow runs daily at 5:30 a.m. Eastern and can also be started manually.
+- The GitHub Actions workflow runs weekdays at 5:30 a.m. Eastern and can also be started manually.
+- The collector looks back up to 96 hours, so Monday can consider recent weekend stories. Only stories actually discussed in a published episode are marked as seen; skipped and unmentioned candidates remain eligible during the lookback.
 - The workflow publishes the podcast feed, cover art, landing page, and recent MP3 episodes to the `gh-pages` branch through GitHub Pages.
 - The feed retains up to 14 recent episodes. The GitHub Actions secret contains the Gemini API key; secrets are not committed to the repository.
 - Each Actions run includes a source-health table with feed status, recent-item count, and consecutive failures. A source must fail on three consecutive runs before the workflow sends an email alert.
