@@ -15,6 +15,9 @@ The episode should be as long as the useful material warrants. A commute-length 
 - The GitHub Actions workflow runs on weekday mornings and can also be started manually.
 - The workflow publishes the podcast feed, cover art, landing page, and recent MP3 episodes to the `gh-pages` branch through GitHub Pages.
 - The feed retains up to 14 recent episodes. The GitHub Actions secret contains the Gemini API key; secrets are not committed to the repository.
+- Each Actions run includes a source-health table with feed status, recent-item count, and consecutive failures. A source must fail on three consecutive runs before the workflow sends an email alert.
+- Alerts fire once per outage. A successful fetch clears that source's failure streak and allows a future outage to trigger a new alert.
+- The failure counters are stored in `source-health.json` on the public Pages branch. They contain only source names and health status; no credentials or NAS details.
 
 ## Editorial focus
 
