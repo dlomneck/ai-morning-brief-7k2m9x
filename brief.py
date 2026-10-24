@@ -84,11 +84,15 @@ def clean(s,limit=1600):
     s=html.unescape(s or "")
     s=re.sub(r"<[^>]+>"," ",s); s=re.sub(r"https?://\S+","",s)
     return re.sub(r"\s+"," ",s).strip()[:limit]
+SOURCE_FAILURE_ALERT_AFTER = 3
+
 def collect(now):
-    out=[]; floor=now-timedelta(hours=LOOKBACK_HOURS)
+    out=[]; statuses=[]; floor=now-timedelta(hours=LOOKBACK_HOURS)
     for name,url in FEEDS:
         try:
             root=ET.fromstring(fetch(url)); count=0
+            if tag(root) not in ("rss","rdf","feed"):
+                raise ValueError(f"Unexpected feed root element: {tag(root)}")
             for e in root.iter():
                 if tag(e) not in ("item","entry"):continue
                 link=link_for(e)
@@ -98,9 +102,53 @@ def collect(now):
                 date=date_for(child(e,{"published","pubdate","updated","date"})) or now
                 if date<floor:continue
                 out.append({"title":title,"link":link,"summary":summary or title,"date":date,"source":name});count+=1
+            statuses.append({"source":name,"ok":True,"recent_items":count})
             log(f"FEED OK {name}: {count} recent items")
-        except Exception as e: log(f"FEED FAILED {name}: {e}")
-    return out
+        except Exception as e:
+            statuses.append({"source":name,"ok":False,"recent_items":0})
+            log(f"FEED FAILED {name}: {e}")
+    return out,statuses
+
+def record_feed_health(statuses,now):
+    path=os.path.join(SITE,"source-health.json")
+    try:
+        previous=json.load(open(path,encoding="utf-8")).get("sources",{})
+    except (OSError,ValueError,AttributeError):
+        previous={}
+    current={}; new_alerts=[]
+    for result in statuses:
+        name=result["source"]; old=previous.get(name,{})
+        failures=0 if result["ok"] else int(old.get("consecutive_failures",0))+1
+        alerted=bool(old.get("alerted",False)) if not result["ok"] else False
+        if not result["ok"] and failures>=SOURCE_FAILURE_ALERT_AFTER and not alerted:
+            alerted=True; new_alerts.append(name)
+        row={"status":"ok" if result["ok"] else "failed",
+             "consecutive_failures":failures,"alerted":alerted,
+             "last_checked":now.isoformat()}
+        if result["ok"]:row["recent_items"]=result["recent_items"]
+        current[name]=row
+    with open(path,"w",encoding="utf-8") as f:
+        json.dump({"sources":current},f,indent=2,sort_keys=True)
+        f.write("\\n")
+    lines=["## RSS source health","",
+           "| Source | Status | Recent items | Consecutive failures |",
+           "|---|---:|---:|---:|"]
+    for result in statuses:
+        row=current[result["source"]]
+        recent=str(result["recent_items"]) if result["ok"] else "—"
+        lines.append(f"| {result['source']} | {'OK' if result['ok'] else 'FAILED'} | {recent} | {row['consecutive_failures']} |")
+    if new_alerts:
+        lines.extend(["","**Persistent feed failure:** "+", ".join(new_alerts)+" failed on three consecutive runs."])
+    summary=os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary,"a",encoding="utf-8") as f:f.write("\\n".join(lines)+"\\n")
+    output=os.environ.get("GITHUB_OUTPUT")
+    if output:
+        with open(output,"a",encoding="utf-8") as f:
+            f.write("health_alert="+("true" if new_alerts else "false")+"\\n")
+    if new_alerts:
+        log("PERSISTENT FEED FAILURE: "+", ".join(new_alerts))
+    return new_alerts
 def select(items,seen):
     # Round-robin across feeds so a high-volume source cannot crowd out the rest.
     buckets={name:[] for name,_ in FEEDS}; urls=set(); titles=set()
@@ -195,7 +243,9 @@ def main():
     owner,name=repo.split("/",1);base=os.environ.get("SITE_BASE") or f"https://{owner.lower()}.github.io/{name}"
     os.makedirs(SITE,exist_ok=True);path=os.path.join(SITE,"seen.json")
     seen=json.load(open(path,encoding="utf-8")) if os.path.exists(path) else {}
-    items=select(collect(now),seen);log(f"SELECTED {len(items)} unseen items")
+    collected,statuses=collect(now)
+    record_feed_health(statuses,now)
+    items=select(collected,seen);log(f"SELECTED {len(items)} unseen items")
     if not items:
         log("No fresh items; existing episodes retained.")
         publish(base,None,None,None,[],seen,now);return
