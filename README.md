@@ -34,6 +34,8 @@ This repository and the podcast feed are public. Anyone with the feed URL can li
 
 The workflow is scheduled weekdays at 5:30 AM America/New_York, with daylight saving handled by GitHub's timezone-aware schedule. This gives the MP3 a buffer before a 6 AM commute, though GitHub can delay scheduled runs. It retains the latest 14 MP3 episodes. A public repository and public Pages site are required for this self-hosted feed.
 
+Each Actions run includes a source-health table in its summary. A source must fail on three consecutive runs to trigger a GitHub email alert. The alert is sent once per outage; a successful fetch resets that source's counter. Source health counters are stored in `source-health.json` on the public Pages branch.
+
 ## Models and costs
 
 The script uses Gemini 3.5 Flash-Lite for editorial selection and dialogue scripting and Gemini 3.8 Flash TTS for two-speaker narration. The show notes link only the sources discussed in that episode. Cover art is published with the feed. Both currently list free API access; free-tier quotas and terms can change. The workflow uses GitHub Actions and Pages. MP3 conversion uses FFmpeg on the GitHub runner.
