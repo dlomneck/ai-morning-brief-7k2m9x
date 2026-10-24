@@ -216,7 +216,8 @@ def main():
     title=clean(brief["title"],160)
     used=set(int(n) for n in brief.get("used_sources",[]) if str(n).isdigit())
     links="".join(f'<li><a href="{esc(items[n-1]["link"])}">{esc(items[n-1]["title"])}</a> ({esc(items[n-1]["source"])})</li>' for n in sorted(used) if 1<=n<=len(items))
-    notes=cdata(f"<p>{esc(script)}</p><p>Sources:</p><ul>{links}</ul>")
+    dialogue="".join(f'<p><strong>{esc(t.get("speaker",""))}:</strong> {esc(t.get("text","").strip())}</p>' for t in turns if t.get("text","").strip())
+    notes=cdata(f"<p><strong>Episode transcript</strong></p>{dialogue}<p><strong>Sources</strong></p><ul>{links}</ul>")
     episode=f'''<item><title>{esc(title)}</title><description>{notes}</description>
 <pubDate>{email.utils.format_datetime(now)}</pubDate>
 <enclosure url="{base}/episodes/{fn}" length="{size}" type="audio/mpeg"/>
