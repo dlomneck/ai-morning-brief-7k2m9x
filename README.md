@@ -36,6 +36,14 @@ The workflow is scheduled weekdays at 5:30 AM America/New_York, with daylight sa
 
 The Monday run can consider recent weekend stories: the collector looks back up to 96 hours. Stories are marked as seen only if they are actually discussed in a published episode, so skipped-day and unmentioned candidates remain eligible during the lookback. Each Actions run includes a source-health table in its summary. A source must fail on three consecutive runs to trigger a GitHub email alert. The alert is sent once per outage; a successful fetch resets that source's counter. Source health counters are stored in `source-health.json` on the public Pages branch.
 
+## Touch-first web player
+
+The Pages home page is a large-control player designed for a landscape touchscreen. It reads episode titles, dates, descriptions, source links, and audio URLs from the same `feed.xml` used by podcast apps. Playback includes play/pause, previous/next, automatic next, seeking, and adjustable speed. The RSS feed remains available at `/feed.xml`.
+
+Playback position, selected episode, speed, and listened status are stored only in the browser's local storage. They do not sync to another device, and clearing site data removes them. The player does not require an account and has no comment or shared-user feature. Audio is not preloaded before selection. Tesla browser behavior still needs an in-car check; the automated browser tests cannot verify car-specific controls or session behavior.
+
+Player changes are tested with Vitest unit tests and Playwright integration/end-to-end browser tests. Run `npm ci`, `npx playwright install chromium`, then `npm test` locally. GitHub Actions runs the same checks on pushes and pull requests to `main`. After a player update, run **Actions → Publish player → Run workflow** to update Pages immediately; the next scheduled podcast run also republishes the latest player files.
+
 ## Models and costs
 
 The script uses Gemini 3.5 Flash-Lite for editorial selection and dialogue scripting and Gemini 3.8 Flash TTS for two-speaker narration. The show notes link only the sources discussed in that episode. Cover art is published with the feed. Both currently list free API access; free-tier quotas and terms can change. The workflow uses GitHub Actions and Pages. MP3 conversion uses FFmpeg on the GitHub runner.

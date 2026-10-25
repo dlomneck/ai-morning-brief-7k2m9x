@@ -1,0 +1,134 @@
+:root {
+  color-scheme: dark;
+  --bg: #101923;
+  --panel: #1a2733;
+  --panel-raised: #223342;
+  --ink: #f5f7f9;
+  --muted: #b1c0cc;
+  --line: #405261;
+  --accent: #f1a43b;
+  --accent-ink: #211707;
+  --green: #72d6aa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(ellipse at 15% 0%, #263848 0, var(--bg) 42rem); }
+button, select, input, a { font: inherit; }
+button, select, a { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; }
+.topbar { min-height: 92px; padding: 14px clamp(18px, 3vw, 48px); display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid #ffffff18; }
+.brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.brand-art { width: 58px; height: 58px; object-fit: cover; border-radius: 15px; }
+.eyebrow, .section-label { color: var(--accent); font-size: 14px; font-weight: 800; letter-spacing: .14em; }
+h1 { margin: 4px 0 0; font-size: clamp(20px, 2.25vw, 30px); line-height: 1.15; }
+.rss-link { min-height: 58px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 20px; border: 1px solid var(--line); border-radius: 15px; text-decoration: none; color: var(--ink); font-weight: 700; font-size: 18px; white-space: nowrap; }
+.rss-link:hover, .rss-link:focus-visible { background: var(--panel-raised); outline: 3px solid var(--accent); outline-offset: 2px; }
+.app-layout { width: min(1680px, 100%); margin: 0 auto; padding: clamp(16px, 2.1vw, 32px); display: grid; grid-template-columns: minmax(420px, .94fr) minmax(480px, 1.06fr); grid-template-rows: minmax(480px, 1fr) minmax(230px, .48fr); gap: clamp(16px, 2vw, 28px); min-height: calc(100vh - 146px); }
+.panel { border: 1px solid #ffffff16; border-radius: 24px; background: linear-gradient(145deg, #1d2c39 0%, var(--panel) 70%); box-shadow: 0 18px 50px #0003; }
+.now-playing { grid-column: 1; grid-row: 1; padding: clamp(22px, 2.7vw, 40px); display: flex; flex-direction: column; }
+.now-content { display: flex; align-items: center; gap: clamp(18px, 2.4vw, 36px); margin: 24px 0 20px; min-height: 0; }
+.cover-art { flex: 0 0 auto; width: clamp(148px, 17vw, 240px); aspect-ratio: 1; object-fit: cover; border-radius: 22px; box-shadow: 0 16px 32px #0005; }
+.episode-info { min-width: 0; }
+.episode-date { color: var(--muted); font-size: 17px; font-weight: 650; }
+.episode-info h2 { font-size: clamp(24px, 3.1vw, 42px); line-height: 1.12; margin: 12px 0 16px; overflow-wrap: anywhere; }
+.saved-status { color: var(--muted); font-size: 16px; line-height: 1.45; }
+.transport { display: flex; justify-content: center; align-items: center; gap: clamp(14px, 3.2vw, 44px); margin: auto 0 20px; }
+.control { border: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 850; }
+.control:disabled { opacity: .42; cursor: default; }
+.secondary { background: transparent; color: var(--ink); min-width: 96px; min-height: 86px; border-radius: 18px; font-size: 36px; gap: 4px; }
+.secondary span { font-size: 13px; letter-spacing: .12em; }
+.secondary:not(:disabled):hover, .secondary:not(:disabled):focus-visible { background: #ffffff12; outline: 3px solid var(--accent); }
+.play-control { width: 112px; height: 112px; border-radius: 50%; color: var(--accent-ink); background: var(--accent); font-size: 40px; box-shadow: 0 8px 26px #f1a43b44; gap: 3px; }
+.play-control span:last-child { font-size: 13px; letter-spacing: .12em; }
+.play-control:not(:disabled):hover, .play-control:not(:disabled):focus-visible { background: #ffc56b; outline: 4px solid #fff; outline-offset: 3px; }
+.timeline { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 12px; }
+.time { color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; min-height: 40px; accent-color: var(--accent); cursor: pointer; }
+.options-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+.speed-control { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; font-weight: 800; letter-spacing: .08em; }
+.speed-control select, .mark-button { min-height: 52px; padding: 0 15px; color: var(--ink); background: var(--panel-raised); border: 1px solid var(--line); border-radius: 13px; font-size: 18px; font-weight: 750; }
+.mark-button { cursor: pointer; }
+.mark-button:disabled { opacity: .45; cursor: default; }
+.mark-button:not(:disabled):hover, .mark-button:not(:disabled):focus-visible { border-color: var(--accent); outline: 2px solid var(--accent); }
+.player-message { color: var(--accent); min-height: 22px; margin: 10px 0 0; font-size: 15px; }
+.episode-panel { grid-column: 2; grid-row: 1 / span 2; padding: clamp(20px, 2.3vw, 34px); display: flex; flex-direction: column; min-height: 0; }
+.episode-panel-head { display: flex; flex-direction: column; gap: 17px; padding-bottom: 14px; }
+.episode-panel-head h2, .description-panel h2 { margin: 8px 0 0; font-size: clamp(24px, 2.5vw, 34px); }
+.filter-row { display: flex; gap: 9px; }
+.filter { min-height: 53px; min-width: 92px; padding: 0 17px; background: transparent; border: 1px solid var(--line); border-radius: 14px; color: var(--muted); font-size: 17px; font-weight: 750; cursor: pointer; }
+.filter.active { border-color: var(--accent); background: #f1a43b1c; color: var(--ink); }
+.filter:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.episode-list { overflow: auto; overscroll-behavior: contain; padding-right: 4px; }
+.episode-card { width: 100%; min-height: 102px; margin: 8px 0; padding: 16px 18px; display: grid; grid-template-columns: 54px 1fr auto; align-items: center; gap: 16px; text-align: left; background: #ffffff08; border: 1px solid #ffffff1c; border-radius: 18px; cursor: pointer; }
+.episode-card:hover, .episode-card:focus-visible, .episode-card.selected { background: var(--panel-raised); border-color: #f1a43b99; outline: none; }
+.episode-card:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
+.card-play { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: #f1a43b20; color: var(--accent); font-size: 24px; }
+.card-copy { min-width: 0; }
+.card-date { display: block; margin-bottom: 5px; color: var(--muted); font-size: 15px; }
+.card-title { display: block; font-size: clamp(18px, 1.55vw, 22px); line-height: 1.25; font-weight: 750; }
+.card-state { color: var(--green); font-size: 14px; font-weight: 800; white-space: nowrap; }
+.card-state.unplayed { color: var(--muted); }
+.description-panel { grid-column: 1; grid-row: 2; padding: clamp(20px, 2.3vw, 34px); overflow: auto; }
+.description-panel h2 { font-size: clamp(22px, 2vw, 28px); }
+.description { margin-top: 14px; color: #e1e8ed; font-size: 17px; line-height: 1.6; overflow-wrap: anywhere; }
+.description p { margin: 0 0 13px; }
+.description a { color: #ffc56b; text-underline-offset: 3px; }
+.description ul, .description ol { padding-left: 26px; }
+.feed-error { margin: auto; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); text-align: center; font-size: 17px; }
+.feed-error[hidden] { display: none; }
+.feed-error strong { color: var(--ink); font-size: 23px; }
+.feed-error button { min-height: 54px; padding: 0 24px; margin-top: 6px; border: 0; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-weight: 800; cursor: pointer; }
+.footer { display: flex; justify-content: space-between; gap: 20px; width: min(1680px, 100%); margin: 0 auto; padding: 0 clamp(18px, 3vw, 48px) 18px; color: var(--muted); font-size: 15px; }
+.footer a { color: #ffc56b; }
+@media (min-width: 1100px) and (min-height: 760px) { .app-layout { height: calc(100vh - 148px); } }
+@media (max-width: 900px) {
+  .app-layout { display: flex; flex-direction: column; min-height: auto; }
+  .now-playing { min-height: 510px; }
+  .episode-panel { min-height: 560px; }
+  .description-panel { min-height: 240px; }
+}
+@media (max-width: 560px) {
+  .topbar { min-height: 78px; padding: 10px 12px; gap: 8px; }
+  .brand { gap: 10px; }
+  .brand-art { width: 46px; height: 46px; border-radius: 12px; }
+  .eyebrow { font-size: 10px; }
+  h1 { font-size: 17px; }
+  .rss-link { min-height: 50px; padding: 0 12px; font-size: 15px; }
+  .app-layout { padding: 12px; gap: 12px; }
+  .panel { border-radius: 19px; }
+  .now-playing { min-height: 485px; padding: 20px; }
+  .now-content { gap: 14px; margin: 18px 0; }
+  .cover-art { width: 112px; border-radius: 15px; }
+  .episode-info h2 { font-size: 23px; }
+  .episode-date { font-size: 14px; }
+  .saved-status { font-size: 14px; }
+  .play-control { width: 96px; height: 96px; }
+  .secondary { min-width: 75px; }
+  .timeline { grid-template-columns: 46px 1fr 46px; gap: 7px; }
+  .time { font-size: 14px; }
+  .options-row { align-items: flex-start; }
+  .speed-control { flex-wrap: wrap; }
+  .speed-control select, .mark-button { min-height: 48px; font-size: 16px; }
+  .mark-button { max-width: 150px; }
+  .episode-panel { padding: 18px; min-height: 520px; }
+  .filter { min-width: 0; min-height: 48px; padding: 0 12px; font-size: 15px; }
+  .episode-card { grid-template-columns: 44px 1fr auto; gap: 10px; min-height: 88px; padding: 12px; }
+  .card-play { width: 42px; height: 42px; font-size: 20px; }
+  .card-title { font-size: 17px; }
+  .card-date { font-size: 13px; }
+  .card-state { font-size: 12px; }
+  .footer { padding: 0 14px 16px; font-size: 13px; }
+}
+@media (max-height: 780px) and (min-width: 901px) {
+  .app-layout { grid-template-rows: minmax(420px, 1fr) minmax(180px, .42fr); padding-top: 14px; padding-bottom: 14px; }
+  .now-playing { padding: 22px; }
+  .now-content { margin: 12px 0; }
+  .cover-art { width: clamp(128px, 14vw, 190px); }
+  .play-control { width: 92px; height: 92px; }
+  .episode-panel { padding: 22px; }
+  .episode-card { min-height: 84px; }
+}

@@ -44,6 +44,12 @@ jobs:
           SITE_DIR: site
         run: python3 brief.py
 
+      - name: Add the touch-first web player
+        run: |
+          cp player/index.html site/index.html
+          cp player/player.css site/player.css
+          cp player/player.js site/player.js
+
       - name: Publish podcast feed and MP3s
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
