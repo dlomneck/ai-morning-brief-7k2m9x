@@ -32,7 +32,7 @@ This repository and the podcast feed are public. Anyone with the feed URL can li
 5. After the first run creates the `gh-pages` branch, open **Settings → Pages** and choose **Deploy from a branch**, branch `gh-pages`, folder `/ (root)`.
 6. The feed URL is `https://dlomneck.github.io/ai-morning-brief-7k2m9x/feed.xml`. Add it to Apple Podcasts or Overcast using “Add a Show by URL.”
 
-The workflow is scheduled weekdays at 5:30 AM America/New_York, with daylight saving handled by GitHub's timezone-aware schedule. This gives the MP3 a buffer before a 6 AM commute, though GitHub can delay scheduled runs. It retains the latest 14 MP3 episodes. A public repository and public Pages site are required for this self-hosted feed.
+The workflow is scheduled weekdays at 5:30 AM America/New_York, with daylight saving handled by GitHub's timezone-aware schedule. This gives the MP3 a buffer before a 6 AM commute, though GitHub can delay scheduled runs. It retains the latest 60 MP3 episodes. A public repository and public Pages site are required for this self-hosted feed.
 
 The Monday run can consider recent weekend stories: the collector looks back up to 96 hours. Stories are marked as seen only if they are actually discussed in a published episode, so skipped-day and unmentioned candidates remain eligible during the lookback. Each Actions run includes a source-health table in its summary. A source must fail on three consecutive runs to trigger a GitHub email alert. The alert is sent once per outage; a successful fetch resets that source's counter. Source health counters are stored in `source-health.json` on the public Pages branch.
 
