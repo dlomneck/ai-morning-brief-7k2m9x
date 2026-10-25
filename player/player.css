@@ -27,9 +27,9 @@ button { color: inherit; }
 h1 { margin: 4px 0 0; font-size: clamp(20px, 2.25vw, 30px); line-height: 1.15; }
 .rss-link { min-height: 58px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 20px; border: 1px solid var(--line); border-radius: 15px; text-decoration: none; color: var(--ink); font-weight: 700; font-size: 18px; white-space: nowrap; }
 .rss-link:hover, .rss-link:focus-visible { background: var(--panel-raised); outline: 3px solid var(--accent); outline-offset: 2px; }
-.app-layout { width: min(1680px, 100%); margin: 0 auto; padding: clamp(16px, 2.1vw, 32px); display: grid; grid-template-columns: minmax(420px, .94fr) minmax(480px, 1.06fr); grid-template-rows: minmax(480px, 1fr) minmax(230px, .48fr); gap: clamp(16px, 2vw, 28px); min-height: calc(100vh - 146px); }
+.app-layout { width: min(1680px, 100%); margin: 0 auto; padding: clamp(16px, 2.1vw, 32px); display: flex; flex-direction: column; gap: clamp(16px, 2vw, 28px); min-height: calc(100vh - 146px); }
 .panel { border: 1px solid #ffffff16; border-radius: 24px; background: linear-gradient(145deg, #1d2c39 0%, var(--panel) 70%); box-shadow: 0 18px 50px #0003; }
-.now-playing { grid-column: 1; grid-row: 1; padding: clamp(22px, 2.7vw, 40px); display: flex; flex-direction: column; }
+.now-playing { padding: clamp(22px, 2.7vw, 40px); display: flex; flex-direction: column; }
 .now-content { display: flex; align-items: center; gap: clamp(18px, 2.4vw, 36px); margin: 24px 0 20px; min-height: 0; }
 .cover-art { flex: 0 0 auto; width: clamp(148px, 17vw, 240px); aspect-ratio: 1; object-fit: cover; border-radius: 22px; box-shadow: 0 16px 32px #0005; }
 .episode-info { min-width: 0; }
@@ -55,7 +55,7 @@ input[type="range"] { width: 100%; min-height: 40px; accent-color: var(--accent)
 .mark-button:disabled { opacity: .45; cursor: default; }
 .mark-button:not(:disabled):hover, .mark-button:not(:disabled):focus-visible { border-color: var(--accent); outline: 2px solid var(--accent); }
 .player-message { color: var(--accent); min-height: 22px; margin: 10px 0 0; font-size: 15px; }
-.episode-panel { grid-column: 2; grid-row: 1 / span 2; padding: clamp(20px, 2.3vw, 34px); display: flex; flex-direction: column; min-height: 0; }
+.episode-panel { padding: clamp(20px, 2.3vw, 34px); display: flex; flex-direction: column; }
 .episode-panel-head { display: flex; flex-direction: column; gap: 17px; padding-bottom: 14px; }
 .episode-panel-head h2, .description-panel h2 { margin: 8px 0 0; font-size: clamp(24px, 2.5vw, 34px); }
 .filter-row { display: flex; gap: 9px; }
@@ -72,7 +72,7 @@ input[type="range"] { width: 100%; min-height: 40px; accent-color: var(--accent)
 .card-title { display: block; font-size: clamp(18px, 1.55vw, 22px); line-height: 1.25; font-weight: 750; }
 .card-state { color: var(--green); font-size: 14px; font-weight: 800; white-space: nowrap; }
 .card-state.unplayed { color: var(--muted); }
-.description-panel { grid-column: 1; grid-row: 2; padding: clamp(20px, 2.3vw, 34px); overflow: auto; }
+.description-panel { padding: clamp(20px, 2.3vw, 34px); }
 .description-panel h2 { font-size: clamp(22px, 2vw, 28px); }
 .description { margin-top: 14px; color: #e1e8ed; font-size: 17px; line-height: 1.6; overflow-wrap: anywhere; }
 .description p { margin: 0 0 13px; }
@@ -84,9 +84,7 @@ input[type="range"] { width: 100%; min-height: 40px; accent-color: var(--accent)
 .feed-error button { min-height: 54px; padding: 0 24px; margin-top: 6px; border: 0; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-weight: 800; cursor: pointer; }
 .footer { display: flex; justify-content: space-between; gap: 20px; width: min(1680px, 100%); margin: 0 auto; padding: 0 clamp(18px, 3vw, 48px) 18px; color: var(--muted); font-size: 15px; }
 .footer a { color: #ffc56b; }
-@media (min-width: 1100px) and (min-height: 760px) { .app-layout { height: calc(100vh - 148px); } }
 @media (max-width: 900px) {
-  .app-layout { display: flex; flex-direction: column; min-height: auto; }
   .now-playing { min-height: 510px; }
   .episode-panel { min-height: 560px; }
   .description-panel { min-height: 240px; }
@@ -122,13 +120,4 @@ input[type="range"] { width: 100%; min-height: 40px; accent-color: var(--accent)
   .card-date { font-size: 13px; }
   .card-state { font-size: 12px; }
   .footer { padding: 0 14px 16px; font-size: 13px; }
-}
-@media (max-height: 780px) and (min-width: 901px) {
-  .app-layout { grid-template-rows: minmax(420px, 1fr) minmax(180px, .42fr); padding-top: 14px; padding-bottom: 14px; }
-  .now-playing { padding: 22px; }
-  .now-content { margin: 12px 0; }
-  .cover-art { width: clamp(128px, 14vw, 190px); }
-  .play-control { width: 92px; height: 92px; }
-  .episode-panel { padding: 22px; }
-  .episode-card { min-height: 84px; }
 }

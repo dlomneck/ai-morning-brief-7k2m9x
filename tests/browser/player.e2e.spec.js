@@ -31,3 +31,17 @@ test("@e2e exposes large, labeled playback controls at tablet viewport", async (
   }
   await expect(page.getByRole("link", { name: /RSS feed/ })).toBeVisible();
 });
+
+test("@e2e keeps the player, queue, and notes in top-to-bottom order on wide screens", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await openPlayer(page);
+  const player = await page.locator(".now-playing").boundingBox();
+  const queue = await page.locator(".episode-panel").boundingBox();
+  const notes = await page.locator(".description-panel").boundingBox();
+  const controls = await page.locator(".transport").boundingBox();
+  expect(player && queue && notes && controls).toBeTruthy();
+  expect(player.y).toBeLessThan(queue.y);
+  expect(queue.y).toBeLessThan(notes.y);
+  expect(controls.y + controls.height).toBeLessThanOrEqual(player.y + player.height);
+  expect(await page.locator("body").evaluate(body => body.scrollWidth)).toBeLessThanOrEqual(1920);
+});
