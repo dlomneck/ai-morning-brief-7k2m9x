@@ -46,7 +46,7 @@ Player changes are tested with Vitest unit tests and Playwright integration/end-
 
 ## Models and costs
 
-The script uses Gemini 3.5 Flash-Lite for editorial selection and dialogue scripting and Gemini 3.8 Flash TTS for two-speaker narration. The show notes link only the sources discussed in that episode. Cover art is published with the feed. Both currently list free API access; free-tier quotas and terms can change. The workflow uses GitHub Actions and Pages. MP3 conversion uses FFmpeg on the GitHub runner.
+The script uses Gemini 3.5 Flash-Lite for editorial selection and dialogue scripting and Gemini 3.8 Flash TTS for two-speaker narration. Alex and Jordan have distinct delivery styles, with stronger energy reserved for turns about unusually consequential developments. FFmpeg applies a pitch-preserving 1.1× tempo increase to the finished audio. The show notes link only the sources discussed in that episode. Cover art is published with the feed. Both currently list free API access; free-tier quotas and terms can change. The workflow uses GitHub Actions and Pages.
 
 ## Tuning
 
