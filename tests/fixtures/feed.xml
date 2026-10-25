@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel><title>Morning AI Engineering Brief</title>
+    <item>
+      <title>Cataloging AI Tools for the SDLC</title>
+      <description><![CDATA[<p><strong>Alex:</strong> A useful briefing.</p><p>Read <a href="https://example.com/source">the source</a>.</p>]]></description>
+      <enclosure url="episodes/cataloging.mp3" type="audio/mpeg" />
+      <guid>episode-cataloging</guid>
+      <pubDate>Fri, 24 Oct 2025 10:00:00 GMT</pubDate>
+      <itunes:duration>240</itunes:duration>
+    </item>
+    <item>
+      <title>Safer Agent Workflows</title>
+      <description><![CDATA[<p>Episode two.</p>]]></description>
+      <enclosure url="episodes/agents.mp3" type="audio/mpeg" />
+      <guid>episode-agents</guid>
+      <pubDate>Thu, 23 Oct 2025 10:00:00 GMT</pubDate>
+      <itunes:duration>180</itunes:duration>
+    </item>
+  </channel>
+</rss>

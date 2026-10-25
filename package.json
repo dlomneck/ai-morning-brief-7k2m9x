@@ -1,0 +1,30 @@
+{
+  "name": "morning-ai-brief-player",
+  "version": "1.0.0",
+  "description": "A weekday, editorially selective audio brief for an engineering leader moving a company toward an AI-driven SDLC. It collects public RSS items, asks Gemini whether the day has enough useful material, creates a conversational two-host episode when warranted, converts it to MP3, and publishes an RSS feed on GitHub Pages. Episodes aim for a commute-length listen when the news supports it; thin days are skipped and strong but limited news gets a shorter episode.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "playwright test --grep @integration",
+    "test:e2e": "playwright test --grep @e2e",
+    "test:browser": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dlomneck/ai-morning-brief-7k2m9x.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dlomneck/ai-morning-brief-7k2m9x/issues"
+  },
+  "homepage": "https://github.com/dlomneck/ai-morning-brief-7k2m9x#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "jsdom": "^30.1.3",
+    "vitest": "^5.0.5"
+  }
+}
