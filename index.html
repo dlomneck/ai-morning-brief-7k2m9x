@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101923">
+  <meta name="description" content="Listen to the Morning AI Engineering Brief.">
+  <title>Morning AI Engineering Brief</title>
+  <link rel="icon" href="artwork.png" type="image/png">
+  <link rel="stylesheet" href="player.css">
+  <script type="module" src="player.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="artwork.png" alt="" class="brand-art">
+      <div><div class="eyebrow">YOUR COMMUTE BRIEF</div><h1>Morning AI Engineering Brief</h1></div>
+    </div>
+    <a class="rss-link" href="feed.xml" aria-label="Open RSS podcast feed">RSS feed <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main class="app-layout">
+    <section class="now-playing panel" aria-labelledby="now-heading">
+      <div class="section-label" id="now-heading">NOW PLAYING</div>
+      <div class="now-content">
+        <img src="artwork.png" alt="Morning AI Engineering Brief cover" class="cover-art">
+        <div class="episode-info">
+          <div class="episode-date" id="now-date">Choose an episode</div>
+          <h2 id="now-title">Loading your episodes…</h2>
+          <div class="saved-status" id="now-status" aria-live="polite">Your listening progress is saved on this device.</div>
+        </div>
+      </div>
+
+      <div class="transport" aria-label="Playback controls">
+        <button class="control secondary" id="previous" type="button" aria-label="Previous episode" title="Previous episode">⏮<span>PREVIOUS</span></button>
+        <button class="control play-control" id="play" type="button" aria-label="Play" disabled><span id="play-icon" aria-hidden="true">▶</span><span id="play-label">PLAY</span></button>
+        <button class="control secondary" id="next" type="button" aria-label="Next episode" title="Next episode">⏭<span>NEXT</span></button>
+      </div>
+
+      <div class="timeline">
+        <span class="time" id="elapsed">0:00</span>
+        <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek within episode" disabled>
+        <span class="time" id="remaining">--:--</span>
+      </div>
+      <div class="options-row">
+        <label class="speed-control" for="speed">SPEED
+          <select id="speed" aria-label="Playback speed">
+            <option value="0.8">0.8×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option>
+          </select>
+        </label>
+        <button class="mark-button" id="mark-listened" type="button" disabled>Mark listened</button>
+      </div>
+      <audio id="audio" preload="none"></audio>
+      <p class="player-message" id="player-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="episode-panel panel" aria-labelledby="episodes-heading">
+      <div class="episode-panel-head">
+        <div><div class="section-label">THE LATEST EPISODES</div><h2 id="episodes-heading">Your listening queue</h2></div>
+        <div class="filter-row" role="group" aria-label="Filter episodes">
+          <button class="filter active" data-filter="all" type="button" aria-pressed="true">All</button>
+          <button class="filter" data-filter="unlistened" type="button" aria-pressed="false">Unplayed</button>
+          <button class="filter" data-filter="listened" type="button" aria-pressed="false">Played</button>
+        </div>
+      </div>
+      <div class="episode-list" id="episode-list" aria-live="polite" aria-busy="true"></div>
+      <div class="feed-error" id="feed-error" hidden>
+        <strong>Episodes could not be loaded.</strong>
+        <span>Check your connection and try again.</span>
+        <button id="reload" type="button">Try again</button>
+      </div>
+    </section>
+
+    <section class="description-panel panel" aria-labelledby="description-heading">
+      <div class="section-label">EPISODE NOTES</div>
+      <h2 id="description-heading">About this episode</h2>
+      <div class="description" id="description">Select an episode to read the transcript and source links.</div>
+    </section>
+  </main>
+  <footer class="footer"><span>Listening state stays on this device.</span><a href="feed.xml">Prefer a podcast app? Open the RSS feed</a></footer>
+</body>
+</html>

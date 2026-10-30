@@ -1,0 +1,54 @@
+{
+  "sources": {
+    "AWS AI Blog": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "Addy Osmani": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "GitHub Changelog": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "Hacker News": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "Latent Space": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "Martin Fowler": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "One Useful Thing": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "OpenAI News": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "Pragmatic Engineer": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    },
+    "Simon Willison": {
+      "alerted": false,
+      "consecutive_failures": 0,
+      "status": "ok"
+    }
+  }
+}
