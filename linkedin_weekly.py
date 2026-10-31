@@ -141,6 +141,7 @@ def send_email(body, settings, now):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--send', action='store_true', help='Email the result; default validates without delivery')
+    parser.add_argument('--check-mail', action='store_true', help='Check SMTP authentication without generating or sending')
     args = parser.parse_args(argv)
     stage = 'configuration'
     try:
@@ -150,10 +151,16 @@ def main(argv=None):
             raise ValueError('Rerun refused to prevent duplicate mail')
         key = os.environ['GEMINI_API_KEY']
         settings = {}
-        if args.send:
+        if args.send or args.check_mail:
             settings = {k: os.environ[k] for k in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM', 'LINKEDIN_EMAIL_TO')}
             if any(not v.strip() for v in settings.values()): raise ValueError('Empty mail setting')
             if any('\n' in v or '\r' in v for v in settings.values()): raise ValueError('Invalid mail setting')
+        if args.check_mail:
+            stage = 'SMTP authentication'
+            with smtplib.SMTP_SSL(settings['SMTP_HOST'], 465, timeout=30, context=ssl.create_default_context()) as smtp:
+                smtp.login(settings['SMTP_USER'], settings['SMTP_PASSWORD'])
+            print('SMTP authentication succeeded; no generation or email attempted.')
+            return 0
         stage = 'source collection'; now = datetime.now(timezone.utc)
         articles = collect_articles(now)
         if not articles:
@@ -167,6 +174,9 @@ def main(argv=None):
         else:
             print('Draft validated in memory. No email sent or content saved.')
         return 0
+    except smtplib.SMTPAuthenticationError as error:
+        print(f'SMTP authentication rejected (code {error.smtp_code}); check sender address and app password.', file=sys.stderr)
+        return 1
     except Exception:
         # Never include exception text or traceback: providers may echo private content.
         print(f'Weekly draft failed during {stage}. Details suppressed for privacy.', file=sys.stderr)

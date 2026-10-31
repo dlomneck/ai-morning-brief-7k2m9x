@@ -4,6 +4,10 @@ on:
   # Manual only until email delivery and the weekly schedule are confirmed.
   workflow_dispatch:
     inputs:
+      check_mail:
+        description: Check Gmail authentication only, without generating or sending
+        type: boolean
+        default: false
       send_email:
         description: Send the draft to the configured private recipient
         type: boolean
@@ -38,9 +42,12 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
           LINKEDIN_EMAIL_TO: ${{ secrets.LINKEDIN_EMAIL_TO }}
+          CHECK_MAIL: ${{ inputs.check_mail }}
           SEND_EMAIL: ${{ inputs.send_email }}
         run: |
-          if [ "$SEND_EMAIL" = "true" ]; then
+          if [ "$CHECK_MAIL" = "true" ]; then
+            python linkedin_weekly.py --check-mail
+          elif [ "$SEND_EMAIL" = "true" ]; then
             python linkedin_weekly.py --send
           else
             python linkedin_weekly.py
