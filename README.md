@@ -55,3 +55,27 @@ The script uses Gemini 3.5 Flash-Lite for editorial selection and dialogue scrip
 ## Tuning
 
 Edit `FEEDS`, `PROMPT`, `LOOKBACK_HOURS`, or the model constants in `brief.py`. The cover art is in `artwork.svg`; the workflow converts it to podcast-compatible PNG for the feed.
+
+## Private weekly LinkedIn draft email (manual pilot)
+
+`linkedin_weekly.py` is independent of podcast generation and publishing. It reads the same feed list over a seven-day window, fetches up to 12 accessible publisher pages, and asks the editorial model for one proposed 150–250-word post. External article text is treated as untrusted input. Referenced sources must have exact supporting excerpts in the fetched text. This checks attribution, not independent truth or whether the proposed opinion is yours: review before posting. Inaccessible, paywalled or unsupported publisher URLs are skipped. If no useful story is selected, the email recommends skipping; there is no publicly stored evergreen post backlog.
+
+Generated text stays in process memory until sent as plain-text email. The script does not save posts, publish to LinkedIn, write job summaries, or create artifacts. The weekly workflow has read-only repository permissions and never touches `site` or `gh-pages`. Provider errors are suppressed rather than logged, because they could echo content. Email and AI providers still process and may retain content under their terms; Gemini's free tier may use submissions to improve products. Do not provide confidential employer information. Only generic editorial instructions belong in this public repository.
+
+### Configure the manual pilot
+
+1. Verify the Gemini key belongs to a **free-tier project without paid billing enabled**. The script cannot inspect the project's billing tier, so a model being free-tier eligible is not itself a spending guarantee. There is one generation call per run, no retries, no search/grounding tools, and no paid fallback. Set repository Actions variable `LINKEDIN_FREE_TIER_CONFIRMED` to `true` only after verifying the project's settings. Leave unset to block execution.
+2. Choose an existing email provider that permits SMTP over TLS (port 465) within a verified free allowance. Add repository **secrets** `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, and `LINKEDIN_EMAIL_TO`. Use an app password where supported; never put credentials or the recipient in source files, issues, or workflow inputs. Some providers require OAuth instead of passwords; confirm provider compatibility before configuring.
+3. Run **Weekly LinkedIn draft email** with `send_email` unchecked to validate a generated draft in memory. This still consumes a model request but does not expose or retain the draft for viewing.
+4. After that succeeds, run it with `send_email` checked to receive a review copy. Inspect your inbox and spam folder; SMTP acceptance does not prove inbox delivery. Do not automatically retry if delivery status is uncertain.
+5. Confirm the desired weekly day/time and successful delivery before adding a schedule. No weekly schedule is enabled yet.
+
+Re-running the same GitHub run is refused to reduce duplicate mail. Separate manual dispatches can still send more than once; this pilot does not claim exactly-once delivery. Before enabling a schedule, add a delivery ledger containing only period identifiers/status, with explicit handling of ambiguous SMTP results. No post body or subject needs to be stored. GitHub notification emails for failed podcast runs are not an SMTP service and cannot deliver the draft body.
+
+Offline checks: `python3 -m unittest discover -s tests -p 'test_linkedin_weekly.py'`. No dependencies beyond Python's standard library are needed for this feature.
+
+### Gmail sender
+
+Use `smtp.gmail.com` for `SMTP_HOST`; the script connects with verified TLS on port 465. Set `SMTP_USER` and `SMTP_FROM` to the sending Gmail address, and `LINKEDIN_EMAIL_TO` to the inbox receiving the drafts (it can be the same address). Set `SMTP_PASSWORD` to a Google app password, not the normal account password. Google requires 2-Step Verification for app passwords; account policies or Advanced Protection may prevent their use. Create a dedicated app password named for this workflow and enter it directly in GitHub Secrets. If app passwords are unavailable, use an OAuth implementation instead; do not weaken account security.
+
+Google instructions: https://support.google.com/mail/answer/185833
