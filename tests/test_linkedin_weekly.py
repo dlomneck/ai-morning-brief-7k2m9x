@@ -10,7 +10,7 @@ import linkedin_weekly as weekly
 class WeeklyTests(unittest.TestCase):
     def setUp(self):
         self.articles = [{'id': 1, 'text': 'An exact supporting excerpt.', 'url': 'https://example.com/story'}]
-        self.draft = {'publish': True, 'post': ' '.join(['word'] * 160), 'angle': 'Proposed opinion',
+        self.draft = {'publish': True, 'post': ' '.join(['word'] * 100), 'angle': 'Proposed opinion',
                       'assumptions': ['Confirm this view.'], 'source_ids': [1],
                       'evidence': [{'source_id': 1, 'quote': 'An exact supporting excerpt.'}]}
 
@@ -20,6 +20,14 @@ class WeeklyTests(unittest.TestCase):
         with self.assertRaises(ValueError): weekly.validate(self.draft, self.articles)
         self.draft['source_ids'] = [99]
         with self.assertRaises(ValueError): weekly.validate(self.draft, self.articles)
+
+    def test_post_length_boundaries(self):
+        for count in (75, 100, 125):
+            self.draft['post'] = ' '.join(['word'] * count)
+            weekly.validate(self.draft, self.articles)
+        for count in (74, 126, 200):
+            self.draft['post'] = ' '.join(['word'] * count)
+            with self.assertRaises(ValueError): weekly.validate(self.draft, self.articles)
 
     def test_rejects_unsafe_article_urls(self):
         for url in ['http://openai.com/x', 'https://127.0.0.1/x', 'https://openai.com:444/x', 'https://openai.com@localhost/x']:

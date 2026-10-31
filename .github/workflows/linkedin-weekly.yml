@@ -1,7 +1,9 @@
 name: Weekly LinkedIn draft email
 
 on:
-  # Manual only until email delivery and the weekly schedule are confirmed.
+  schedule:
+    - cron: "0 8 * * 5"
+      timezone: "America/New_York"
   workflow_dispatch:
     inputs:
       check_mail:
@@ -33,7 +35,38 @@ jobs:
           python-version: '3.12'
       - name: Check privacy and delivery behavior without external calls
         run: python -m unittest discover -s tests -p 'test_linkedin_weekly.py'
+      - name: Identify scheduled delivery period
+        if: github.event_name == 'schedule'
+        id: period
+        run: |
+          python - <<'PYCODE'
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          year, week, _ = datetime.now(ZoneInfo("America/New_York")).isocalendar()
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"key=linkedin-week-{year}-{week:02d}\n")
+          PYCODE
+      - name: Check scheduled attempt marker
+        if: github.event_name == 'schedule'
+        id: attempted
+        uses: actions/cache/restore@v4
+        with:
+          path: .linkedin-delivery
+          key: ${{ steps.period.outputs.key }}
+      - name: Mark scheduled attempt before contacting providers
+        if: github.event_name == 'schedule' && steps.attempted.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .linkedin-delivery
+          echo "attempted" > .linkedin-delivery/status
+      - name: Save scheduled attempt marker
+        if: github.event_name == 'schedule' && steps.attempted.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .linkedin-delivery
+          key: ${{ steps.period.outputs.key }}
       - name: Generate and optionally email privately
+        if: github.event_name != 'schedule' || steps.attempted.outputs.cache-hit != 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LINKEDIN_FREE_TIER_CONFIRMED: ${{ vars.LINKEDIN_FREE_TIER_CONFIRMED }}
@@ -43,7 +76,7 @@ jobs:
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
           LINKEDIN_EMAIL_TO: ${{ secrets.LINKEDIN_EMAIL_TO }}
           CHECK_MAIL: ${{ inputs.check_mail }}
-          SEND_EMAIL: ${{ inputs.send_email }}
+          SEND_EMAIL: ${{ github.event_name == 'schedule' || inputs.send_email }}
         run: |
           if [ "$CHECK_MAIL" = "true" ]; then
             python linkedin_weekly.py --check-mail
