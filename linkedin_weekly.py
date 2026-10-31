@@ -177,9 +177,9 @@ def main(argv=None):
     except smtplib.SMTPAuthenticationError as error:
         print(f'SMTP authentication rejected (code {error.smtp_code}); check sender address and app password.', file=sys.stderr)
         return 1
-    except Exception:
+    except Exception as error:
         # Never include exception text or traceback: providers may echo private content.
-        print(f'Weekly draft failed during {stage}. Details suppressed for privacy.', file=sys.stderr)
+        print(f'Weekly draft failed during {stage} ({type(error).__name__}). Details suppressed for privacy.', file=sys.stderr)
         return 1
 
 if __name__ == '__main__':
