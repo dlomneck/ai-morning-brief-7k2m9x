@@ -5,6 +5,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import smtplib
 import ssl
 import sys
@@ -12,6 +13,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from email.headerregistry import Address
 from html.parser import HTMLParser
 
 import brief
@@ -129,14 +131,31 @@ def compose(draft, articles):
                 'Evidence was checked against fetched publisher text; this is not independent fact-checking.']
     return '\n\n'.join(sections)
 
+def recipients(value):
+    if '\r' in value or '\n' in value:
+        raise ValueError('Invalid recipient list')
+    addresses = []
+    for item in re.split(r'[;,]', value):
+        item = item.strip()
+        if not item:
+            raise ValueError('Empty recipient')
+        address = Address(addr_spec=item)
+        if not address.username or not address.domain or address.addr_spec != item:
+            raise ValueError('Use plain email addresses')
+        if item not in addresses:
+            addresses.append(item)
+    return addresses
+
+
 def send_email(body, settings, now):
     message = EmailMessage()
     message['Subject'] = f'Your weekly LinkedIn draft — {now:%Y-%m-%d}'
-    message['From'] = settings['SMTP_FROM']; message['To'] = settings['LINKEDIN_EMAIL_TO']
+    targets = recipients(settings['LINKEDIN_EMAIL_TO'])
+    message['From'] = settings['SMTP_FROM']; message['To'] = ', '.join(targets)
     message.set_content(body)
     with smtplib.SMTP_SSL(settings['SMTP_HOST'], 465, timeout=30, context=ssl.create_default_context()) as smtp:
         smtp.login(settings['SMTP_USER'], settings['SMTP_PASSWORD'])
-        smtp.send_message(message)
+        smtp.send_message(message, to_addrs=targets)
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -155,6 +174,7 @@ def main(argv=None):
             settings = {k: os.environ[k] for k in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM', 'LINKEDIN_EMAIL_TO')}
             if any(not v.strip() for v in settings.values()): raise ValueError('Empty mail setting')
             if any('\n' in v or '\r' in v for v in settings.values()): raise ValueError('Invalid mail setting')
+            recipients(settings['LINKEDIN_EMAIL_TO'])
         if args.check_mail:
             stage = 'SMTP authentication'
             with smtplib.SMTP_SSL(settings['SMTP_HOST'], 465, timeout=30, context=ssl.create_default_context()) as smtp:

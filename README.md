@@ -79,3 +79,5 @@ Offline checks: `python3 -m unittest discover -s tests -p 'test_linkedin_weekly.
 Use `smtp.gmail.com` for `SMTP_HOST`; the script connects with verified TLS on port 465. Set `SMTP_USER` and `SMTP_FROM` to the sending Gmail address, and `LINKEDIN_EMAIL_TO` to the inbox receiving the drafts (it can be the same address). Set `SMTP_PASSWORD` to a Google app password, not the normal account password. Google requires 2-Step Verification for app passwords; account policies or Advanced Protection may prevent their use. Create a dedicated app password named for this workflow and enter it directly in GitHub Secrets. If app passwords are unavailable, use an OAuth implementation instead; do not weaken account security.
 
 Google instructions: https://support.google.com/mail/answer/185833
+
+Multiple draft recipients: set `LINKEDIN_EMAIL_TO` to plain addresses separated by commas or semicolons, for example `one@example.com; two@example.com`. Both recipients appear in the To header and can see each other’s addresses. Empty entries and malformed addresses are rejected before generation. Update this value directly in GitHub Secrets, not source code.

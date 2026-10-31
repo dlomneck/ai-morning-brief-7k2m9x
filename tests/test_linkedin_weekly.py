@@ -21,6 +21,24 @@ class WeeklyTests(unittest.TestCase):
         self.draft['source_ids'] = [99]
         with self.assertRaises(ValueError): weekly.validate(self.draft, self.articles)
 
+    def test_multiple_recipients(self):
+        expected = ['one@example.com', 'two@example.com']
+        for value in ('one@example.com; two@example.com', 'one@example.com,two@example.com'):
+            self.assertEqual(weekly.recipients(value), expected)
+        for value in ('', 'one@example.com;', 'not-an-email', 'one@example.com\nBcc: bad@example.com'):
+            with self.assertRaises(ValueError): weekly.recipients(value)
+
+    def test_explicit_delivery_to_both_recipients(self):
+        from datetime import datetime, timezone
+        settings = {'SMTP_HOST': 'smtp.gmail.com', 'SMTP_USER': 'sender@example.com',
+                    'SMTP_PASSWORD': 'test', 'SMTP_FROM': 'sender@example.com',
+                    'LINKEDIN_EMAIL_TO': 'one@example.com; two@example.com'}
+        with patch.object(weekly.smtplib, 'SMTP_SSL') as smtp:
+            weekly.send_email('test body', settings, datetime.now(timezone.utc))
+            call = smtp.return_value.__enter__.return_value.send_message.call_args
+            self.assertEqual(call.kwargs['to_addrs'], ['one@example.com', 'two@example.com'])
+            self.assertEqual(str(call.args[0]['To']), 'one@example.com, two@example.com')
+
     def test_post_length_boundaries(self):
         for count in (75, 100, 125):
             self.draft['post'] = ' '.join(['word'] * count)
