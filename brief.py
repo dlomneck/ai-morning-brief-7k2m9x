@@ -24,6 +24,8 @@ FEEDS = [
     ("One Useful Thing", "https://www.oneusefulthing.org/feed"),
     ("AWS AI Blog", "https://aws.amazon.com/blogs/ai/feed"),
     ("OpenAI News", "https://openai.com/news/rss.xml"),
+    ("InfoQ AI Development", "https://feed.infoq.com/ai-development/news/"),
+    ("Google Cloud DevOps and SRE", "https://cloudblog.withgoogle.com/products/devops-sre/rss/"),
     ("Addy Osmani", "https://addyosmani.com/feed.xml"),
     ("Hacker News", "https://news.ycombinator.com/rss"),
 ]
