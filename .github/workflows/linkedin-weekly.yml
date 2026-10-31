@@ -2,7 +2,7 @@ name: Weekly LinkedIn draft email
 
 on:
   schedule:
-    - cron: "0 8 * * 5"
+    - cron: "0 1 * * 5"
       timezone: "America/New_York"
   workflow_dispatch:
     inputs:
