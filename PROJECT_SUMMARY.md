@@ -26,7 +26,7 @@ Prioritize coding agents, AI-assisted QA, developer workflows and tooling, engin
 
 ## Source set
 
-The configured sources are Pragmatic Engineer, Latent Space, Simon Willison, GitHub Changelog, Martin Fowler, One Useful Thing, AWS AI Blog, OpenAI News, InfoQ AI Development, Google Cloud DevOps and SRE, Addy Osmani, and Hacker News. The selector limits the number of items per source and the editorial prompt decides what merits an episode. Source configuration lives in `brief.py`.
+The configured sources are Pragmatic Engineer, Latent Space, Simon Willison, GitHub Changelog, Martin Fowler, One Useful Thing, AWS AI Blog, OpenAI News, OpenAI Developer Blog, InfoQ AI Development, Google Cloud DevOps and SRE, OWASP GenAI Security Project, Addy Osmani, and Hacker News. The selector limits the number of items per source and the editorial prompt decides what merits an episode. Source configuration lives in `brief.py`.
 
 ## Public-data and privacy boundary
 
