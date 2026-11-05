@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 TZ = "America/New_York"
 TEXT_MODEL = "gemini-3.5-flash-lite"
+TEXT_MODEL_FALLBACK = "gemini-3.8-flash"
 TTS_MODEL = "gemini-3.8-flash-tts"
 VOICE = "Kore"
 KEEP = 60
@@ -182,7 +183,13 @@ def narration(items,now,key):
       "contents":[{"role":"user","parts":[{"text":f"Today is {now.astimezone(ZoneInfo(TZ)):%A, %B %d, %Y}. Review these public-source items and write today's narration.\n\n"+"\n\n---\n\n".join(src)}]}],
       "generationConfig":{"temperature":0.35,"maxOutputTokens":6000,"responseMimeType":"application/json"}}
     url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL}:generateContent"
-    r=request_json(url,payload,key,retries=4)
+    try:
+        r=request_json(url,payload,key,retries=4)
+    except RuntimeError as e:
+        if "Gemini HTTP 503:" not in str(e):raise
+        log(f"{TEXT_MODEL} remained unavailable after retries; trying {TEXT_MODEL_FALLBACK}.")
+        fallback_url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL_FALLBACK}:generateContent"
+        r=request_json(fallback_url,payload,key,retries=2)
     parts=r.get("candidates",[{}])[0].get("content",{}).get("parts",[])
     text=" ".join(p.get("text","") for p in parts).strip()
     if not text:raise RuntimeError("Gemini returned no editorial response.")
