@@ -21,6 +21,27 @@ class WeeklyTests(unittest.TestCase):
         self.draft['source_ids'] = [99]
         with self.assertRaises(ValueError): weekly.validate(self.draft, self.articles)
 
+    def test_email_punctuation_is_enforced_for_all_generated_fields(self):
+        self.draft['post'] = "I'd try this\u2014it looks useful."
+        self.draft['angle'] = 'Simple\u2013practical'
+        self.draft['assumptions'] = ['That\u2019s my view\u2014confirm it.']
+        body = weekly.compose(self.draft, self.articles)
+        for char in ('\u2014', '\u2013', '\u2019'):
+            self.assertNotIn(char, body)
+        self.assertIn("I'd try this, it looks useful.", body)
+
+    def test_exact_article_does_not_select_a_different_story(self):
+        env = {'LINKEDIN_FREE_TIER_CONFIRMED': 'true', 'GEMINI_API_KEY': 'test',
+               'LINKEDIN_ARTICLE_URL': 'https://newsletter.pragmaticengineer.com/p/example'}
+        with patch.dict(os.environ, env, clear=True), \
+             patch.object(weekly, 'article_text', return_value='source ' * 100), \
+             patch.object(weekly, 'collect_articles') as collect, \
+             patch.object(weekly, 'generate', return_value=self.draft) as generate, \
+             patch.object(weekly, 'validate'), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(weekly.main([]), 0)
+            collect.assert_not_called()
+            self.assertEqual(generate.call_args.args[0][0]['url'], env['LINKEDIN_ARTICLE_URL'])
+
     def test_multiple_recipients(self):
         expected = ['one@example.com', 'two@example.com']
         for value in ('one@example.com; two@example.com', 'one@example.com,two@example.com'):

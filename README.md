@@ -72,6 +72,10 @@ Generated text stays in process memory until sent as plain-text email. The scrip
 
 Re-running the same GitHub run is refused to reduce duplicate mail. Separate manual dispatches can still send more than once; this pilot does not claim exactly-once delivery. Scheduled runs save a weekly attempt marker in the Actions cache before contacting providers. A matching marker skips the scheduled attempt, including after uncertain delivery; failed attempts require manual review. Cache eviction can remove this marker, so it is best-effort duplicate protection, not an exactly-once guarantee. No post body or subject needs to be stored. GitHub notification emails for failed podcast runs are not an SMTP service and cannot deliver the draft body.
 
+Drafts use simple, friendly language, short sentences and natural contractions. The mail formatter enforces straight apostrophes and removes em/en dashes even if the model ignores the prompt.
+
+To redo a specific story, start a new manual **Weekly LinkedIn draft email** run, enter its exact publisher URL in `article_url`, and select `send_email`. This uses only that article, instead of selecting a new story. Locally, use `python3 linkedin_weekly.py --article-url URL --send` with the usual environment settings. Start a fresh run rather than GitHub's Re-run button, which remains blocked to prevent duplicate deliveries.
+
 Offline checks: `python3 -m unittest discover -s tests -p 'test_linkedin_weekly.py'`. No dependencies beyond Python's standard library are needed for this feature.
 
 ### Gmail sender

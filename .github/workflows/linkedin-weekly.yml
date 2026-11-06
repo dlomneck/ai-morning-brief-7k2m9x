@@ -6,6 +6,10 @@ on:
       timezone: "America/New_York"
   workflow_dispatch:
     inputs:
+      article_url:
+        description: Optional exact publisher article URL to regenerate
+        type: string
+        required: false
       check_mail:
         description: Check Gmail authentication only, without generating or sending
         type: boolean
@@ -75,6 +79,7 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
           LINKEDIN_EMAIL_TO: ${{ secrets.LINKEDIN_EMAIL_TO }}
+          LINKEDIN_ARTICLE_URL: ${{ inputs.article_url }}
           CHECK_MAIL: ${{ inputs.check_mail }}
           SEND_EMAIL: ${{ github.event_name == 'schedule' || inputs.send_email }}
         run: |
