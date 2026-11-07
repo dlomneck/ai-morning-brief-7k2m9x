@@ -5,7 +5,13 @@ on:
     # Run at 1:00 AM Eastern on weekdays so the MP3 has time to publish before a 6 AM commute.
     - cron: "0 1 * * 1-5"
       timezone: "America/New_York"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      redo_story_links:
+        description: "Optional JSON array of exact RSS story URLs to regenerate"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -42,6 +48,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SITE_DIR: site
+          REDO_STORY_LINKS: ${{ github.event.inputs.redo_story_links || '' }}
         run: python3 brief.py
 
       - name: Add the touch-first web player

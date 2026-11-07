@@ -274,7 +274,20 @@ def main():
     seen=json.load(open(path,encoding="utf-8")) if os.path.exists(path) else {}
     collected,statuses=collect(now)
     record_feed_health(statuses,now)
-    items=select(collected,seen);log(f"SELECTED {len(items)} unseen items")
+    redo_story_links=os.environ.get("REDO_STORY_LINKS","").strip()
+    if redo_story_links:
+        try: requested=json.loads(redo_story_links)
+        except json.JSONDecodeError as e: raise RuntimeError(f"REDO_STORY_LINKS must be a JSON array: {e}") from e
+        if not isinstance(requested,list) or not requested or not all(isinstance(u,str) and u.strip() for u in requested):
+            raise RuntimeError("REDO_STORY_LINKS must be a non-empty JSON array of URLs.")
+        wanted={u.strip().lower().rstrip("/") for u in requested}
+        available={i["link"].lower().rstrip("/"):i for i in collected}
+        missing=wanted-available.keys()
+        if missing:raise RuntimeError(f"Requested redo stories are outside the feed lookback window or unavailable ({len(missing)} missing).")
+        items=sorted((available[u] for u in wanted),key=lambda i:i["date"],reverse=True)
+        log(f"REDO MODE: selected {len(items)} requested stories, ignoring seen state.")
+    else:
+        items=select(collected,seen);log(f"SELECTED {len(items)} unseen items")
     if not items:
         log("No fresh items; existing episodes retained.")
         publish(base,None,None,None,[],seen,now);return

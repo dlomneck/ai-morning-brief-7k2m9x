@@ -36,7 +36,7 @@ This repository and the podcast feed are public. Anyone with the feed URL can li
 1. Create a Gemini API key in [Google AI Studio](https://aistudio.google.com/). Do not commit the key.
 2. In this repository, open **Settings → Secrets and variables → Actions → New repository secret**. Name it `GEMINI_API_KEY` and paste the key into GitHub's secret form.
 3. Under **Settings → Actions → General → Workflow permissions**, enable **Read and write permissions**.
-4. Run **Actions → Daily AI Brief → Run workflow** once to verify the first episode.
+4. Run **Actions → Daily AI Brief → Run workflow** once to verify the first episode. To regenerate a prior episode in a different format, optionally provide a JSON array of its exact RSS story URLs in `redo_story_links`; those items must still be inside the 96-hour feed lookback window.
 5. After the first run creates the `gh-pages` branch, open **Settings → Pages** and choose **Deploy from a branch**, branch `gh-pages`, folder `/ (root)`.
 6. The feed URL is `https://dlomneck.github.io/ai-morning-brief-7k2m9x/feed.xml`. Add it to Apple Podcasts or Overcast using “Add a Show by URL.”
 
