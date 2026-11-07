@@ -23,6 +23,10 @@ The initial source set is deliberately focused on engineering practice, AI devel
 
 The selector takes at most three recent items per source and spreads the input across sources before Gemini chooses what deserves airtime. Import AI was removed after repeated HTTP 403 responses; AWS AI Blog was added for Bedrock and applied-AI engineering coverage. OpenAI News adds a first-party signal for releases, while the Developer Blog adds Codex and hands-on developer-workflow coverage; both are filtered for practical SDLC impact. InfoQ AI Development adds practitioner coverage of AI-assisted software development; Google Cloud DevOps and SRE adds software delivery and DORA research; OWASP GenAI adds security and governance guidance. The custom Hacker News RSS service repeatedly returned 502, so it now uses Hacker News's official front-page RSS feed, with the editorial prompt filtering for AI/SDLC relevance. Tidy First, Lenny's Newsletter, and The Batch remain out to keep the signal focused.
 
+## Editorial approach
+
+The brief filters aggressively for relevance, then explores selected stories in a conversational two-host discussion. Hosts ask real follow-up questions, explain why a development matters, unpack implications and uncertainty, and use clearly labeled hypothetical examples when they help. The target is about 15 minutes when the material supports it; a quiet day can be shorter or skipped, with no padding.
+
 ## Public information and privacy
 
 This repository and the podcast feed are public. Anyone with the feed URL can listen and download episodes. The script sends only public RSS titles, excerpts, and links to Gemini; do not add company information or private sources. Google's Gemini API free tier may use submitted content to improve its products.

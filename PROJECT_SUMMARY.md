@@ -22,7 +22,7 @@ The episode should be as long as the useful material warrants. A commute-length 
 
 ## Editorial focus
 
-Prioritize coding agents, AI-assisted QA, developer workflows and tooling, engineering practices, team design, security, and governance. Include model or harness updates only when they have a practical effect on software delivery. Prefer evidence and concrete implications over hype. Do not invent facts or company-specific knowledge.
+Prioritize coding agents, AI-assisted QA, developer workflows and tooling, engineering practices, team design, security, and governance. Include model or harness updates only when they have a practical effect on software delivery. Filter selectively, then explore chosen stories in a natural two-host conversation with follow-up questions, context, practical implications, and concrete but clearly hypothetical examples where helpful. Aim for about 15 minutes when the material supports it. Keep quiet days short or skip them; do not pad. Prefer evidence and concrete implications over hype. Do not invent facts or company-specific knowledge.
 
 ## Source set
 
