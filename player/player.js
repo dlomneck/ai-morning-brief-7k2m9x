@@ -59,6 +59,16 @@ export function writeState(state, storage = globalThis.localStorage) {
   catch { return false; }
 }
 
+// RSS items are displayed in feed order (newest first). When an episode ends,
+// walk toward newer unplayed episodes first, then wrap to the newest remaining
+// unplayed episode so an older backlog item cannot strand newer releases.
+export function nextUnplayedEpisode(episodes, currentId, isListened) {
+  const currentIndex = episodes.findIndex(episode => episode.id === currentId);
+  const newer = episodes.slice(0, Math.max(0, currentIndex)).find(episode => !isListened(episode.id));
+  if (newer) return newer;
+  return episodes.find(episode => episode.id !== currentId && !isListened(episode.id)) ?? null;
+}
+
 export function sanitizeDescription(markup, targetDocument = globalThis.document) {
   const source = new DOMParser().parseFromString(markup ?? "", "text/html");
   const output = targetDocument.createDocumentFragment();
@@ -284,7 +294,9 @@ if (typeof document !== "undefined" && document.getElementById("audio")) {
   el("audio").addEventListener("ended", () => {
     const episode = currentEpisode();
     if (episode) updateEpisodeState(episode.id, { listened: true, position: 0, duration: el("audio").duration || 0 });
-    currentLabel(); renderList(); moveEpisode(1);
+    currentLabel(); renderList();
+    const next = nextUnplayedEpisode(episodes, currentId, id => episodeState(id).listened);
+    if (next) chooseEpisode(next.id, true);
   });
   el("audio").addEventListener("error", () => { if (audioReadyForId === currentId) setMessage("This episode could not be loaded. Check your connection and try again."); });
   window.addEventListener("pagehide", () => {
