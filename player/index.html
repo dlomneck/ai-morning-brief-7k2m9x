@@ -30,11 +30,13 @@
           <div class="saved-status" id="now-status" aria-live="polite">Your listening progress is saved on this device.</div>
         </div>
       </div>
+
       <div class="transport" aria-label="Playback controls">
         <button class="control secondary" id="previous" type="button" aria-label="Previous episode" title="Previous episode">⏮<span>PREVIOUS</span></button>
         <button class="control play-control" id="play" type="button" aria-label="Play" disabled><span id="play-icon" aria-hidden="true">▶</span><span id="play-label">PLAY</span></button>
         <button class="control secondary" id="next" type="button" aria-label="Next episode" title="Next episode">⏭<span>NEXT</span></button>
       </div>
+
       <div class="timeline">
         <span class="time" id="elapsed">0:00</span>
         <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek within episode" disabled>
@@ -51,6 +53,7 @@
       <audio id="audio" preload="none"></audio>
       <p class="player-message" id="player-message" role="status" aria-live="polite"></p>
     </section>
+
     <section class="episode-panel panel" aria-labelledby="episodes-heading">
       <div class="episode-panel-head">
         <div><div class="section-label">THE LATEST EPISODES</div><h2 id="episodes-heading">Your listening queue</h2></div>
@@ -70,11 +73,7 @@
         <button id="reload" type="button">Try again</button>
       </div>
     </section>
-    <section class="description-panel panel" aria-labelledby="description-heading">
-      <div class="section-label">EPISODE NOTES</div>
-      <h2 id="description-heading">About this episode</h2>
-      <div class="description" id="description">Select an episode to read the transcript and source links.</div>
-    </section>
+
   </main>
   <footer class="footer"><span>Listening state stays on this device.</span><a href="feed.xml">Prefer a podcast app? Open the RSS feed</a></footer>
 </body>

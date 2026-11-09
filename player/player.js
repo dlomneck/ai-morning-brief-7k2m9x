@@ -95,6 +95,7 @@ const el = id => document.getElementById(id);
 let episodes = [];
 let state = readState();
 let currentId = "";
+let expandedId = "";
 let filter = "all";
 let seeking = false;
 let saveTimer = 0;
@@ -118,7 +119,6 @@ function currentLabel() {
   el("now-title").textContent = episode.title;
   el("now-date").textContent = episode.date && !Number.isNaN(episode.date.valueOf()) ? episode.date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) : "Morning AI Brief";
   el("now-status").textContent = saved.listened ? "Listened · saved on this device" : saved.position > 0 ? `Resume from ${formatTime(saved.position)} · saved on this device` : "Not played yet · progress saves on this device";
-  el("description").replaceChildren(sanitizeDescription(episode.description));
   el("play").disabled = false;
   el("mark-listened").disabled = false;
   el("mark-listened").textContent = saved.listened ? "Mark unplayed" : "Mark listened";
@@ -149,19 +149,43 @@ function renderList() {
   }
   for (const episode of visible) {
     const saved = episodeState(episode.id);
+    const entry = document.createElement("article");
+    entry.className = "episode-entry";
     const button = document.createElement("button");
     button.type = "button";
     button.className = `episode-card${episode.id === currentId ? " selected" : ""}`;
     button.setAttribute("aria-pressed", String(episode.id === currentId));
+    button.setAttribute("aria-expanded", String(episode.id === expandedId));
+    button.setAttribute("aria-controls", `episode-notes-${episode.index}`);
     const play = document.createElement("span"); play.className = "card-play"; play.setAttribute("aria-hidden", "true"); play.textContent = episode.id === currentId && !el("audio").paused ? "Ⅱ" : "▶";
     const copy = document.createElement("span"); copy.className = "card-copy";
     const date = document.createElement("span"); date.className = "card-date"; date.textContent = episode.date && !Number.isNaN(episode.date.valueOf()) ? episode.date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Recent episode";
     const title = document.createElement("span"); title.className = "card-title"; title.textContent = episode.title;
     copy.append(date, title);
     const status = document.createElement("span"); status.className = `card-state${saved.listened ? "" : " unplayed"}`; status.textContent = saved.listened ? "LISTENED" : saved.position > 0 ? "RESUME" : "NEW";
-    button.append(play, copy, status);
-    button.addEventListener("click", () => chooseEpisode(episode.id, true));
-    list.append(button);
+    const disclosure = document.createElement("span"); disclosure.className = "card-disclosure"; disclosure.setAttribute("aria-hidden", "true"); disclosure.textContent = episode.id === expandedId ? "⌃" : "⌄";
+    button.append(play, copy, status, disclosure);
+    button.addEventListener("click", () => {
+      expandedId = episode.id;
+      chooseEpisode(episode.id, true);
+      renderList();
+    });
+    const details = document.createElement("section");
+    details.className = "episode-details";
+    details.id = `episode-notes-${episode.index}`;
+    details.hidden = episode.id !== expandedId;
+    details.setAttribute("aria-label", `Transcript and sources for ${episode.title}`);
+    const detailsHead = document.createElement("div"); detailsHead.className = "episode-details-head";
+    const detailsLabel = document.createElement("span"); detailsLabel.className = "section-label"; detailsLabel.textContent = "TRANSCRIPT & SOURCES";
+    const collapse = document.createElement("button"); collapse.type = "button"; collapse.className = "collapse-notes"; collapse.textContent = "Hide notes";
+    collapse.setAttribute("aria-label", `Collapse transcript and sources for ${episode.title}`);
+    collapse.addEventListener("click", () => { expandedId = ""; renderList(); });
+    detailsHead.append(detailsLabel, collapse);
+    const description = document.createElement("div"); description.className = "description";
+    description.append(sanitizeDescription(episode.description));
+    details.append(detailsHead, description);
+    entry.append(button, details);
+    list.append(entry);
   }
 }
 function setMessage(message) { el("player-message").textContent = message; }
