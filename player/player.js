@@ -132,6 +132,10 @@ function currentLabel() {
 function renderList() {
   const list = el("episode-list");
   list.replaceChildren();
+  const unplayedCount = episodes.filter(episode => !episodeState(episode.id).listened).length;
+  const markAll = el("mark-all-listened");
+  markAll.disabled = unplayedCount === 0;
+  markAll.textContent = unplayedCount ? `Mark all ${unplayedCount} as played` : "All episodes played";
   const visible = episodes.filter(episode => {
     const listened = episodeState(episode.id).listened;
     return filter === "all" || (filter === "listened" ? listened : !listened);
@@ -252,6 +256,18 @@ function markListened() {
   currentLabel();
   renderList();
 }
+function markAllListened() {
+  const unplayed = episodes.filter(episode => !episodeState(episode.id).listened);
+  if (!unplayed.length) return;
+  if (!window.confirm(`Mark all ${unplayed.length} available episodes as played on this device?`)) return;
+  const updatedAt = Date.now();
+  for (const episode of episodes) {
+    state.episodes[episode.id] = { ...episodeState(episode.id), listened: true, position: 0, updatedAt };
+  }
+  persist();
+  currentLabel();
+  renderList();
+}
 async function loadFeed() {
   el("episode-list").setAttribute("aria-busy", "true");
   el("feed-error").hidden = true;
@@ -283,6 +299,7 @@ if (typeof document !== "undefined" && document.getElementById("audio")) {
   el("previous").addEventListener("click", () => moveEpisode(-1));
   el("next").addEventListener("click", () => moveEpisode(1));
   el("mark-listened").addEventListener("click", markListened);
+  el("mark-all-listened").addEventListener("click", markAllListened);
   el("reload").addEventListener("click", () => void loadFeed());
   for (const button of document.querySelectorAll(".filter")) button.addEventListener("click", () => setFilter(button.dataset.filter));
   el("seek").addEventListener("input", () => { seeking = true; const audio = el("audio"); if (audio.duration) el("elapsed").textContent = formatTime(Number(el("seek").value) / 1000 * audio.duration); });

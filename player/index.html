@@ -57,10 +57,13 @@
     <section class="episode-panel panel" aria-labelledby="episodes-heading">
       <div class="episode-panel-head">
         <div><div class="section-label">THE LATEST EPISODES</div><h2 id="episodes-heading">Your listening queue</h2></div>
-        <div class="filter-row" role="group" aria-label="Filter episodes">
-          <button class="filter active" data-filter="all" type="button" aria-pressed="true">All</button>
-          <button class="filter" data-filter="unlistened" type="button" aria-pressed="false">Unplayed</button>
-          <button class="filter" data-filter="listened" type="button" aria-pressed="false">Played</button>
+        <div class="queue-tools">
+          <div class="filter-row" role="group" aria-label="Filter episodes">
+            <button class="filter active" data-filter="all" type="button" aria-pressed="true">All</button>
+            <button class="filter" data-filter="unlistened" type="button" aria-pressed="false">Unplayed</button>
+            <button class="filter" data-filter="listened" type="button" aria-pressed="false">Played</button>
+          </div>
+          <button class="mark-all-button" id="mark-all-listened" type="button" title="Listening progress is stored only on this device" disabled>Mark all as played</button>
         </div>
       </div>
       <div class="episode-list" id="episode-list" aria-live="polite" aria-busy="true"></div>
