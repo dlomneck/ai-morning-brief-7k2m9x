@@ -14,9 +14,9 @@ test("@integration expands the selected episode inline to show notes and sources
   await expect(page.getByRole("heading", { name: "Safer Agent Workflows" })).toBeVisible();
   await disclosure.click();
   await expect(details).toBeVisible();
-  await expect(page.getByText("A useful briefing.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "the source" })).toHaveAttribute("href", "https://example.com/source");
-  await expect(page.getByText("Episode two.")).toBeVisible();
+  await expect(entry.getByText("A useful briefing.")).toBeVisible();
+  await expect(entry.getByRole("link", { name: "the source" })).toHaveAttribute("href", "https://example.com/source");
+  await expect(page.getByText("Episode two.")).toBeHidden();
   await page.getByRole("button", { name: "Hide transcript and sources: Safer Agent Workflows" }).click();
   await expect(details).toBeHidden();
 });
