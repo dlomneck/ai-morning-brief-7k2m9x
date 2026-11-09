@@ -12,10 +12,10 @@ The episode should be as long as the useful material warrants. A commute-length 
 
 - `brief.py` collects recent public RSS items, spreads selection across sources, filters them for relevance with Gemini, and skips publication when there is not enough useful news.
 - When an episode is warranted, Gemini writes a two-host dialogue and generates speech audio. FFmpeg converts the audio to MP3.
-- The GitHub Actions workflow runs weekdays at 5:30 a.m. Eastern and can also be started manually.
+- The GitHub Actions workflow runs weekdays at 1:17 a.m. America/New_York and can also be started manually. GitHub may delay scheduled runs.
 - The collector looks back up to 96 hours, so Monday can consider recent weekend stories. Only stories actually discussed in a published episode are marked as seen; skipped and unmentioned candidates remain eligible during the lookback.
 - The workflow publishes the podcast feed, cover art, landing page, and recent MP3 episodes to the `gh-pages` branch through GitHub Pages.
-- The feed retains up to 14 recent episodes. The GitHub Actions secret contains the Gemini API key; secrets are not committed to the repository.
+- The feed retains up to 60 recent episodes. The GitHub Actions secret contains the Gemini API key; secrets are not committed to the repository.
 - Each Actions run includes a source-health table with feed status, recent-item count, and consecutive failures. A source must fail on three consecutive runs before the workflow sends an email alert.
 - Alerts fire once per outage. A successful fetch clears that source's failure streak and allows a future outage to trigger a new alert.
 - The failure counters are stored in `source-health.json` on the public Pages branch. They contain only source names and health status; no credentials or NAS details.
