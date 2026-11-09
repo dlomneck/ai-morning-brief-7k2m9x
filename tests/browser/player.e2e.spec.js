@@ -16,7 +16,7 @@ test("@e2e plays, changes speed, automatically advances, and restores listened s
   await expect(page.getByRole("heading", { name: "Safer Agent Workflows" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mark listened" })).toHaveText("Mark listened");
   await page.getByRole("button", { name: "Played", exact: true }).click();
-  await expect(page.getByRole("button", { name: /Cataloging AI Tools for the SDLC/ })).toBeVisible();
+  await expect(page.locator(".episode-entry").filter({ hasText: "Cataloging AI Tools for the SDLC" })).toBeVisible();
 });
 
 test("@e2e exposes large, labeled playback controls at tablet viewport", async ({ page }) => {
