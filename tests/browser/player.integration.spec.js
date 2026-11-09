@@ -3,21 +3,21 @@ import { openPlayer } from "./fixtures.js";
 
 test("@integration expands the selected episode inline to show notes and sources", async ({ page }) => {
   await openPlayer(page);
-  const play = page.getByRole("button", { name: "Play episode: Safer Agent Workflows" });
-  const disclosure = page.getByRole("button", { name: "Show transcript and sources: Safer Agent Workflows" });
-  const entry = page.locator(".episode-entry").filter({ hasText: "Safer Agent Workflows" });
+  const play = page.getByRole("button", { name: "Play episode: Cataloging AI Tools for the SDLC" });
+  const disclosure = page.getByRole("button", { name: "Show transcript and sources: Cataloging AI Tools for the SDLC" });
+  const entry = page.locator(".episode-entry").filter({ hasText: "Cataloging AI Tools for the SDLC" });
   const details = entry.locator(".episode-details");
   await expect(play).toBeVisible();
   await expect(details).toBeHidden();
   await play.click();
   await expect(details).toBeHidden();
-  await expect(page.getByRole("heading", { name: "Safer Agent Workflows" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cataloging AI Tools for the SDLC" })).toBeVisible();
   await disclosure.click();
   await expect(details).toBeVisible();
   await expect(entry.getByText("A useful briefing.")).toBeVisible();
   await expect(entry.getByRole("link", { name: "the source" })).toHaveAttribute("href", "https://example.com/source");
   await expect(page.getByText("Episode two.")).toBeHidden();
-  await page.getByRole("button", { name: "Hide transcript and sources: Safer Agent Workflows" }).click();
+  await page.getByRole("button", { name: "Hide transcript and sources: Cataloging AI Tools for the SDLC" }).click();
   await expect(details).toBeHidden();
 });
 
