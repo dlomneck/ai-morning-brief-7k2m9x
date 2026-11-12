@@ -187,6 +187,50 @@ def select(items,seen):
             if len(out)>=20:break
         if not added:break
     return out
+def repair_source_ids(brief,items,key):
+    # Gemini occasionally returns a valid script but omits its used_sources array.
+    # Ask it to map claims in that script back to the numbered input items.
+    script=" ".join(t.get("text","").strip() for t in brief.get("turns",[]) if t.get("text"))
+    candidates=[]
+    for n,item in enumerate(items,1):
+        candidates.append(f"[{n}] {item['source']}: {item['title']}\nURL: {item['link']}\nExcerpt: {item['summary']}")
+    payload={"systemInstruction":{"parts":[{"text":"Map the factual stories discussed in the supplied podcast script to the numbered source items. Return JSON only with one key, used_sources, whose value is an array of integer IDs. Include only items clearly discussed and directly supporting a claim. Never invent an ID. If no item supports a claim, omit it."}]},
+      "contents":[{"role":"user","parts":[{"text":"SCRIPT:\n"+script+"\n\nNUMBERED SOURCE ITEMS:\n"+"\n\n".join(candidates)}]}],
+      "generationConfig":{"temperature":0,"maxOutputTokens":500,"responseMimeType":"application/json"}}
+    url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL}:generateContent"
+    try:
+        response=request_json(url,payload,key,retries=2)
+    except RuntimeError as e:
+        if "Gemini HTTP 503:" not in str(e):raise
+        log(f"{TEXT_MODEL} unavailable during source recovery; trying {TEXT_MODEL_FALLBACK}.")
+        url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL_FALLBACK}:generateContent"
+        response=request_json(url,payload,key,retries=2)
+    parts=response.get("candidates",[{}])[0].get("content",{}).get("parts",[])
+    text=" ".join(p.get("text","") for p in parts).strip()
+    if not text:
+        log("Source recovery returned no response.")
+        return []
+    try:
+        result=json.loads(text)
+    except json.JSONDecodeError:
+        log("Source recovery returned invalid JSON.")
+        return []
+    raw=result.get("used_sources",[]) if isinstance(result,dict) else []
+    return normalize_source_ids(raw,len(items))
+
+def normalize_source_ids(raw,item_count):
+    if not isinstance(raw,list):return []
+    ids=set()
+    for value in raw:
+        if type(value) is int:
+            source_id=value
+        elif isinstance(value,str) and value.isdigit():
+            source_id=int(value)
+        else:
+            continue
+        if 1<=source_id<=item_count:ids.add(source_id)
+    return sorted(ids)
+
 def narration(items,now,key):
     src=[]
     for n,i in enumerate(items,1):
@@ -209,7 +253,15 @@ def narration(items,now,key):
     except json.JSONDecodeError as e: raise RuntimeError(f"Gemini returned invalid editorial JSON: {e}") from e
     if not isinstance(brief.get("publish"),bool):raise RuntimeError("Editorial response is missing publish decision.")
     brief.setdefault("turns",[]);brief.setdefault("used_sources",[])
-    if brief["publish"] and (not brief["turns"] or not brief.get("title")):raise RuntimeError("Published brief is missing title or dialogue.")
+    if brief["publish"]:
+        if not brief["turns"] or not brief.get("title"):raise RuntimeError("Published brief is missing title or dialogue.")
+        ids=normalize_source_ids(brief.get("used_sources"),len(items))
+        if not ids:
+            log("Published brief omitted valid source IDs; attempting source recovery.")
+            ids=repair_source_ids(brief,items,key)
+        if not ids:
+            raise RuntimeError("Published brief has no valid source IDs after recovery; refusing to publish an episode without sources.")
+        brief["used_sources"]=ids
     return brief
 def audio(turns,key,wav):
     content=[]
