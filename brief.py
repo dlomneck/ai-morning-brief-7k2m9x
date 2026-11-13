@@ -383,10 +383,15 @@ def voice_duration(path):
     with wave.open(path,"rb") as f:
         return f.getnframes()/float(f.getframerate())
 
-def mix_voice_with_music(voice_path,music_path,out_path):
-    duration=voice_duration(voice_path)
-    make_music_bed(music_path,duration,ending="outro" in os.path.basename(music_path))
-    mix="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=0.35[bed];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=1.0[voice];[bed][voice]amix=inputs=2:duration=shortest:dropout_transition=0,alimiter=limit=0.96[out]"
+def mix_voice_with_music(voice_path,music_path,out_path,ending=False):
+    voice_len=voice_duration(voice_path)
+    tail=3.2 if ending else 0.0
+    make_music_bed(music_path,voice_len+tail,ending=ending)
+    voice_filter="[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=1.0"
+    if tail:
+        voice_filter+=f",apad=pad_dur={tail}"
+    voice_filter+="[voice]"
+    mix=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=0.35[bed];{voice_filter};[bed][voice]amix=inputs=2:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",music_path,"-i",voice_path,"-filter_complex",mix,"-map","[out]","-c:a","pcm_s16le",out_path],check=True)
 
 def esc(s):
@@ -462,7 +467,7 @@ def main():
     ]
     outro_turns=[
         {"speaker":"Alex","text":"That's the Morning AI Engineering Brief.","delivery":"natural"},
-        {"speaker":"Jordan","text":"Thanks for listening. We'll be back with more soon.","delivery":"natural"}
+        {"speaker":"Jordan","text":"Thanks for listening, and we'll be back tomorrow with more insights on navigating the AI-driven SDLC.","delivery":"natural"}
     ]
     all_turns=intro_turns+turns+outro_turns
     local=now.astimezone(ZoneInfo(TZ));fn=f"ai-brief-{local:%Y-%m-%d-%H%M}.mp3"
@@ -474,7 +479,7 @@ def main():
     audio(turns,key,wav)
     audio(outro_turns,key,outro_voice)
     mix_voice_with_music(intro_voice,intro_music,intro_mix)
-    mix_voice_with_music(outro_voice,outro_music,outro_mix)
+    mix_voice_with_music(outro_voice,outro_music,outro_mix,ending=True)
     concat="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[body];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[outro];[intro][body][outro]concat=n=3:v=0:a=1,atempo=1.1[episode]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro_mix,"-i",wav,"-i",outro_mix,"-filter_complex",concat,"-map","[episode]","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
     for temp in (wav,intro_voice,outro_voice,intro_music,outro_music,intro_mix,outro_mix):
