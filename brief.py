@@ -61,7 +61,9 @@ def request_json(url, payload, key, timeout=180, retries=2):
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8","replace")[:1200]
             if e.code in (429,500,502,503,504) and attempt < retries:
-                delay = min(2 ** (attempt + 1), 30)
+                # Gemini 503s indicate temporary capacity pressure; short retries
+                # are not enough during a traffic spike, so back off progressively.
+                delay = min(15 * (2 ** attempt), 120) if e.code == 503 else min(2 ** (attempt + 1), 30)
                 log(f"Gemini HTTP {e.code}; retrying in {delay}s (attempt {attempt + 2}/{retries + 1}).")
                 time.sleep(delay); continue
             raise RuntimeError(f"Gemini HTTP {e.code}: {detail}") from e
@@ -249,7 +251,7 @@ def narration(items,now,key):
         if "Gemini HTTP 503:" not in str(e):raise
         log(f"{TEXT_MODEL} remained unavailable after retries; trying {TEXT_MODEL_FALLBACK}.")
         fallback_url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL_FALLBACK}:generateContent"
-        r=request_json(fallback_url,payload,key,retries=2)
+        r=request_json(fallback_url,payload,key,retries=4)
     parts=r.get("candidates",[{}])[0].get("content",{}).get("parts",[])
     text=" ".join(p.get("text","") for p in parts).strip()
     if not text:raise RuntimeError("Gemini returned no editorial response.")
