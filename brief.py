@@ -388,7 +388,7 @@ def voice_duration(path):
         return f.getnframes()/float(f.getframerate())
 
 def music_gain_fraction(percent=None):
-    raw=os.environ.get("MUSIC_GAIN_PERCENT","120") if percent is None else percent
+    raw=os.environ.get("MUSIC_GAIN_PERCENT","144") if percent is None else percent
     try:value=float(raw)
     except (TypeError,ValueError) as e:raise RuntimeError("MUSIC_GAIN_PERCENT must be a number from 0 to 300.") from e
     if not 0<=value<=300:raise RuntimeError("MUSIC_GAIN_PERCENT must be between 0 and 300.")
@@ -406,16 +406,31 @@ def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percen
     mix=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[bed];{voice_filter};[bed][voice]amix=inputs=2:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",music_path,"-i",voice_path,"-filter_complex",mix,"-map","[out]","-c:a","pcm_s16le",out_path],check=True)
 
-def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=120,tempo_percent=120):
-    paths={name:os.path.join(SITE,f"remix-{name}.wav") for name in ("intro-voice","body-voice","outro-voice","intro-music","outro-music","intro-mix","outro-mix")}
-    audio(intro_turns,key,paths["intro-voice"])
-    audio(body_turns,key,paths["body-voice"])
-    audio(outro_turns,key,paths["outro-voice"])
-    mix_voice_with_music(paths["intro-voice"],paths["intro-music"],paths["intro-mix"],gain_percent=gain_percent,tempo_percent=tempo_percent)
-    mix_voice_with_music(paths["outro-voice"],paths["outro-music"],paths["outro-mix"],ending=True,gain_percent=gain_percent,tempo_percent=tempo_percent)
-    concat="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[body];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[outro];[intro][body][outro]concat=n=3:v=0:a=1,atempo=1.1[episode]"
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",paths["intro-mix"],"-i",paths["body-voice"],"-i",paths["outro-mix"],"-filter_complex",concat,"-map","[episode]","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
-    for path in paths.values():
+def estimated_speech_seconds(turns):
+    words=sum(len(t.get("text","").split()) for t in turns)
+    return max(2.0,words/2.2+0.4)
+
+def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=144,tempo_percent=120):
+    # Render dialogue once, then lay music only beneath the opening and sign-off.
+    voice=os.path.join(SITE,"remix-voice.wav")
+    intro_music=os.path.join(SITE,"remix-intro-music.wav")
+    outro_music=os.path.join(SITE,"remix-outro-music.wav")
+    mixed=os.path.join(SITE,"remix-mixed.wav")
+    all_turns=intro_turns+body_turns+outro_turns
+    audio(all_turns,key,voice)
+    voice_len=voice_duration(voice)
+    intro_len=min(voice_len,estimated_speech_seconds(intro_turns))
+    outro_speech_len=estimated_speech_seconds(outro_turns)
+    tail=3.2
+    outro_start=max(intro_len,voice_len-outro_speech_len)
+    make_music_bed(intro_music,intro_len,tempo_percent=tempo_percent)
+    make_music_bed(outro_music,outro_speech_len+tail,ending=True,tempo_percent=tempo_percent)
+    gain=music_gain_fraction(gain_percent)
+    delay_ms=int(outro_start*1000)
+    mix=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,apad=pad_dur={tail}[voice];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,adelay={delay_ms}|{delay_ms},volume={gain}[outro];[intro][voice][outro]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro_music,"-i",voice,"-i",outro_music,"-filter_complex",mix,"-map","[out]","-c:a","pcm_s16le",mixed],check=True)
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",mixed,"-af","atempo=1.1","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
+    for path in (voice,intro_music,outro_music,mixed):
         if os.path.exists(path):os.remove(path)
 
 def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
