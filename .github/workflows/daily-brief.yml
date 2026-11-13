@@ -21,7 +21,7 @@ on:
         description: "Music bed gain relative to its baseline; 120 means 20% louder"
         required: false
         type: string
-        default: "120"
+        default: "144"
       music_tempo_percent:
         description: "Music bed tempo relative to its baseline; 120 means 20% faster"
         required: false
@@ -65,7 +65,7 @@ jobs:
           SITE_DIR: site
           REDO_STORY_LINKS: ${{ github.event.inputs.redo_story_links || '' }}
           REMIX_EPISODE_FILENAME: ${{ github.event.inputs.remix_episode_filename || '' }}
-          MUSIC_GAIN_PERCENT: ${{ github.event.inputs.music_gain_percent || '120' }}
+          MUSIC_GAIN_PERCENT: ${{ github.event.inputs.music_gain_percent || '144' }}
           MUSIC_TEMPO_PERCENT: ${{ github.event.inputs.music_tempo_percent || '120' }}
         run: python3 brief.py
 
