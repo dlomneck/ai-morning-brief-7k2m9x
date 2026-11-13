@@ -46,7 +46,7 @@ Make them sound like people thinking together, not alternating readers. Let a ho
 
 Aim for about 1,900 to 2,200 spoken words, roughly a 15-minute commute, when the reporting supports that depth. Do not shorten a worthwhile episode just to stay terse; do not pad to hit a number. On a very quiet day, publish=false remains the right choice. If one story dominates, explore it from a few useful angles; if several matter, prioritize and develop the strongest instead of mentioning everything briefly. Cite the originating publication casually in the dialogue for every discussed item, at least once per story.
 
-Give each episode a recognizable spoken frame without long boilerplate. Open with Alex welcoming listeners to the Morning AI Engineering Brief and naturally introducing Jordan; if Jasmine joins, introduce her as today's guest. Close with a concise practical takeaway or signal to watch, then a warm, brief sign-off. Set delivery to emphatic only for turns about unusually consequential developments that materially affect engineering practice, security, governance, or the AI-driven SDLC. Those turns should sound brighter and more energized, never shouting or hyping.
+The brief has a separate short spoken show introduction and sign-off added after drafting. Do not write a generic show welcome or thank-you in these dialogue turns. Begin with a natural transition into the selected news, and close the discussion with a practical takeaway or signal to watch. If Jasmine participates, introduce her naturally within the discussion. Set delivery to emphatic only for turns about unusually consequential developments that materially affect engineering practice, security, governance, or the AI-driven SDLC. Those turns should sound brighter and more energized, never shouting or hyping.
 
 Produce JSON only with keys publish (boolean), title (specific and useful, never date-only), turns (array of {speaker: Alex, Jordan, or Jasmine; text: spoken text; delivery: natural or emphatic}), and used_sources (array of the numbered source item IDs actually discussed). If publish is false, turns and used_sources should be empty and title should briefly explain no episode was made. Spoken language only inside turns: no headings, bullets, URLs, markdown, or em-dashes."""
 
@@ -339,27 +339,55 @@ def audio(turns,key,wav):
         os.remove(path)
 
 
-def make_jingle(path,frequencies):
-    # A tiny original, warm major-key sonic logo: rising intro and falling sign-off.
-    rate=24000; beat=0.38; tail=0.42
-    frames=int((len(frequencies)*beat+tail)*rate)
+def make_music_bed(path,duration,ending=False):
+    # Original soft chord-and-arpeggio bed, with a gentle resolution for the outro.
+    rate=24000
+    chord_length=1.55
+    g=(196.00,246.94,293.66,392.00)
+    d=(146.83,185.00,220.00,293.66)
+    em=(164.81,196.00,246.94,329.63)
+    c=(130.81,164.81,196.00,293.66)
+    chords=[em,c,d,g] if ending else [g,d,em,c]
+    length=max(0.5,duration)
+    frames=int(length*rate)
     samples=[]
     for frame in range(frames):
-        t=frame/rate; value=0.0
-        for index,freq in enumerate(frequencies):
-            local=t-index*beat
-            if 0<=local<beat+tail:
-                attack=min(1.0,local/0.012)
-                release=min(1.0,max(0.0,(beat+tail-local)/0.16))
-                envelope=attack*release*math.exp(-3.8*local)
-                tone=(math.sin(2*math.pi*freq*local)
-                      +0.30*math.sin(2*math.pi*freq*2*local)
-                      +0.10*math.sin(2*math.pi*freq*3*local))
-                value+=0.16*envelope*tone
+        t=frame/rate
+        chord_index=int(t/chord_length)%len(chords)
+        local=t%chord_length
+        chord=chords[chord_index]
+        attack=min(1.0,local/0.24)
+        release=min(1.0,max(0.0,(chord_length-local)/0.24))
+        pad_env=attack*release*(0.94+0.06*math.sin(2*math.pi*0.38*t))
+        value=0.0
+        for note in chord:
+            phase=2*math.pi*note*t
+            value+=0.030*pad_env*(0.78*math.sin(phase)+0.18*math.sin(phase*2)+0.04*math.sin(phase*3))
+        # A quiet, rounded arpeggio gives the cue a recognizable musical shape.
+        beat=0.39
+        beat_index=int(t/beat)
+        pluck_t=t-beat_index*beat
+        pluck_freq=chord[(beat_index%3)+1]
+        if pluck_t<0.32:
+            pluck_env=math.exp(-8.0*pluck_t)*min(1.0,pluck_t/0.008)
+            value+=0.048*pluck_env*(math.sin(2*math.pi*pluck_freq*pluck_t)+0.20*math.sin(4*math.pi*pluck_freq*pluck_t))
+        fade_in=min(1.0,t/0.30)
+        fade_out=min(1.0,max(0.0,(length-t)/0.75))
+        value*=fade_in*fade_out
         samples.append(max(-1.0,min(1.0,value)))
     with wave.open(path,"wb") as f:
         f.setnchannels(1);f.setsampwidth(2);f.setframerate(rate)
         f.writeframes(b"".join(struct.pack("<h",int(sample*32767)) for sample in samples))
+
+def voice_duration(path):
+    with wave.open(path,"rb") as f:
+        return f.getnframes()/float(f.getframerate())
+
+def mix_voice_with_music(voice_path,music_path,out_path):
+    duration=voice_duration(voice_path)
+    make_music_bed(music_path,duration,ending="outro" in os.path.basename(music_path))
+    mix="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=0.35[bed];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=1.0[voice];[bed][voice]amix=inputs=2:duration=shortest:dropout_transition=0,alimiter=limit=0.96[out]"
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",music_path,"-i",voice_path,"-filter_complex",mix,"-map","[out]","-c:a","pcm_s16le",out_path],check=True)
 
 def esc(s):
     return (s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;").replace("'","&apos;"))
@@ -428,15 +456,28 @@ def main():
     log(f"EDITORIAL TITLE {brief['title']}")
     log(f"SCRIPT {len(script.split())} words")
     turns=[{**t,"text":re.sub(r"[*#_>]","",t.get("text","")).replace("—",", ").replace("–",", ")} for t in turns]
+    intro_turns=[
+        {"speaker":"Alex","text":"Welcome to the Morning AI Engineering Brief. I'm Alex.","delivery":"natural"},
+        {"speaker":"Jordan","text":"And I'm Jordan. Let's get into the AI developments that matter to engineering teams.","delivery":"natural"}
+    ]
+    outro_turns=[
+        {"speaker":"Alex","text":"That's the Morning AI Engineering Brief.","delivery":"natural"},
+        {"speaker":"Jordan","text":"Thanks for listening. We'll be back with more soon.","delivery":"natural"}
+    ]
+    all_turns=intro_turns+turns+outro_turns
     local=now.astimezone(ZoneInfo(TZ));fn=f"ai-brief-{local:%Y-%m-%d-%H%M}.mp3"
     wav=os.path.join(SITE,"episode.wav");mp3=os.path.join(SITE,fn)
+    intro_voice=os.path.join(SITE,"intro-voice.wav");outro_voice=os.path.join(SITE,"outro-voice.wav")
+    intro_music=os.path.join(SITE,"intro-music.wav");outro_music=os.path.join(SITE,"outro-music.wav")
+    intro_mix=os.path.join(SITE,"intro-mix.wav");outro_mix=os.path.join(SITE,"outro-mix.wav")
+    audio(intro_turns,key,intro_voice)
     audio(turns,key,wav)
-    intro=os.path.join(SITE,"intro-jingle.wav");outro=os.path.join(SITE,"outro-jingle.wav")
-    make_jingle(intro,[392.00,493.88,587.33,783.99])
-    make_jingle(outro,[587.33,493.88,392.00])
-    mix="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[outro];[intro][voice][outro]concat=n=3:v=0:a=1,atempo=1.1[episode]"
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro,"-i",wav,"-i",outro,"-filter_complex",mix,"-map","[episode]","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
-    for temp in (wav,intro,outro):
+    audio(outro_turns,key,outro_voice)
+    mix_voice_with_music(intro_voice,intro_music,intro_mix)
+    mix_voice_with_music(outro_voice,outro_music,outro_mix)
+    concat="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[body];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[outro];[intro][body][outro]concat=n=3:v=0:a=1,atempo=1.1[episode]"
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro_mix,"-i",wav,"-i",outro_mix,"-filter_complex",concat,"-map","[episode]","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
+    for temp in (wav,intro_voice,outro_voice,intro_music,outro_music,intro_mix,outro_mix):
         if os.path.exists(temp):os.remove(temp)
     size=os.path.getsize(mp3)
     if size<10000:raise RuntimeError("Generated MP3 is unexpectedly small.")
@@ -444,7 +485,7 @@ def main():
     used=set(int(n) for n in brief.get("used_sources",[]) if str(n).isdigit())
     used_items=[items[n-1] for n in sorted(used) if 1<=n<=len(items)]
     links="".join(f'<li><a href="{esc(items[n-1]["link"])}">{esc(items[n-1]["title"])}</a> ({esc(items[n-1]["source"])})</li>' for n in sorted(used) if 1<=n<=len(items))
-    dialogue="".join(f'<p><strong>{esc(t.get("speaker",""))}:</strong> {esc(t.get("text","").strip())}</p>' for t in turns if t.get("text","").strip())
+    dialogue="".join(f'<p><strong>{esc(t.get("speaker",""))}:</strong> {esc(t.get("text","").strip())}</p>' for t in all_turns if t.get("text","").strip())
     notes=cdata(f"<p><strong>Episode transcript</strong></p>{dialogue}<p><strong>Sources</strong></p><ul>{links}</ul>")
     episode=f'''<item><title>{esc(title)}</title><description>{notes}</description>
 <pubDate>{email.utils.format_datetime(now)}</pubDate>
