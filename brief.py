@@ -383,7 +383,14 @@ def voice_duration(path):
     with wave.open(path,"rb") as f:
         return f.getnframes()/float(f.getframerate())
 
-def mix_voice_with_music(voice_path,music_path,out_path,ending=False):
+def music_gain_fraction(percent=None):
+    raw=os.environ.get("MUSIC_GAIN_PERCENT","120") if percent is None else percent
+    try:value=float(raw)
+    except (TypeError,ValueError) as e:raise RuntimeError("MUSIC_GAIN_PERCENT must be a number from 0 to 300.") from e
+    if not 0<=value<=300:raise RuntimeError("MUSIC_GAIN_PERCENT must be between 0 and 300.")
+    return 0.35*(value/100.0)
+
+def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percent=120):
     voice_len=voice_duration(voice_path)
     tail=3.2 if ending else 0.0
     make_music_bed(music_path,voice_len+tail,ending=ending)
@@ -391,8 +398,58 @@ def mix_voice_with_music(voice_path,music_path,out_path,ending=False):
     if tail:
         voice_filter+=f",apad=pad_dur={tail}"
     voice_filter+="[voice]"
-    mix=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=0.35[bed];{voice_filter};[bed][voice]amix=inputs=2:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
+    gain=music_gain_fraction(gain_percent)
+    mix=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[bed];{voice_filter};[bed][voice]amix=inputs=2:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",music_path,"-i",voice_path,"-filter_complex",mix,"-map","[out]","-c:a","pcm_s16le",out_path],check=True)
+
+def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=120):
+    paths={name:os.path.join(SITE,f"remix-{name}.wav") for name in ("intro-voice","body-voice","outro-voice","intro-music","outro-music","intro-mix","outro-mix")}
+    audio(intro_turns,key,paths["intro-voice"])
+    audio(body_turns,key,paths["body-voice"])
+    audio(outro_turns,key,paths["outro-voice"])
+    mix_voice_with_music(paths["intro-voice"],paths["intro-music"],paths["intro-mix"],gain_percent=gain_percent)
+    mix_voice_with_music(paths["outro-voice"],paths["outro-music"],paths["outro-mix"],ending=True,gain_percent=gain_percent)
+    concat="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[body];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[outro];[intro][body][outro]concat=n=3:v=0:a=1,atempo=1.1[episode]"
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",paths["intro-mix"],"-i",paths["body-voice"],"-i",paths["outro-mix"],"-filter_complex",concat,"-map","[episode]","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
+    for path in paths.values():
+        if os.path.exists(path):os.remove(path)
+
+def remix_episode(base,filename,key,seen,now,gain_percent):
+    if os.path.basename(filename)!=filename or not filename.endswith(".mp3"):
+        raise RuntimeError("REMIX_EPISODE_FILENAME must be an MP3 filename from the existing feed.")
+    feed=os.path.join(SITE,"feed.xml")
+    candidates=old_items(feed)
+    source=next((item for item in candidates if re.search(r"<guid[^>]*>"+re.escape(filename)+r"</guid>",item)),None)
+    if not source:raise RuntimeError(f"Episode {filename} was not found in the current podcast feed.")
+    desc_match=re.search(r"<description>([\\s\\S]*?)</description>",source)
+    title_match=re.search(r"<title>(.*?)</title>",source)
+    if not desc_match or not title_match:raise RuntimeError("The selected feed episode is missing its title or transcript.")
+    description=desc_match.group(0)
+    content=desc_match.group(1)
+    content=re.sub(r"^<!\\[CDATA\\[|\\]\\]>$","",content.strip())
+    turns=[]
+    for speaker,text in re.findall(r"<p><strong>(Alex|Jordan|Jasmine):</strong>(.*?)</p>",content,re.S):
+        text=html.unescape(re.sub(r"<[^>]+>","",text)).strip()
+        if text:turns.append({"speaker":speaker,"text":text,"delivery":"natural"})
+    if len(turns)<5 or not turns[0]["text"].startswith("Welcome to the Morning AI Engineering Brief.") or not turns[-1]["text"].startswith("Thanks for listening,"):
+        raise RuntimeError("This episode does not have the current standard introduction and sign-off required for a transcript-preserving remix.")
+    intro_turns=turns[:2];outro_turns=turns[-2:];body_turns=turns[2:-2]
+    local=now.astimezone(ZoneInfo(TZ))
+    filename_out=f"ai-brief-{local:%Y-%m-%d-%H%M%S}-mix{int(gain_percent)}.mp3"
+    path_out=os.path.join(SITE,"episodes",filename_out)
+    os.makedirs(os.path.dirname(path_out),exist_ok=True)
+    render_episode_audio(intro_turns,body_turns,outro_turns,key,path_out,gain_percent)
+    size=os.path.getsize(path_out)
+    if size<10000:raise RuntimeError("Remixed MP3 is unexpectedly small.")
+    title=html.unescape(title_match.group(1))
+    delta=float(gain_percent)-100
+    label=f"Music {'+' if delta>=0 else ''}{delta:g}%"
+    item=f'''<item><title>{esc(title)} ({esc(label)})</title>{description}
+<pubDate>{email.utils.format_datetime(now)}</pubDate>
+<enclosure url="{base}/episodes/{filename_out}" length="{size}" type="audio/mpeg"/>
+<guid isPermaLink="false">{filename_out}</guid></item>'''
+    publish(base,item,path_out,filename_out,[],seen,now)
+    log(f"REMIX COMPLETE {filename_out}: reused transcript for {filename} with music at {gain_percent}% of original mix.")
 
 def esc(s):
     return (s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;").replace("'","&apos;"))
@@ -436,6 +493,10 @@ def main():
     seen=json.load(open(path,encoding="utf-8")) if os.path.exists(path) else {}
     collected,statuses=collect(now)
     record_feed_health(statuses,now)
+    remix_filename=os.environ.get("REMIX_EPISODE_FILENAME","").strip()
+    if remix_filename:
+        remix_episode(base,remix_filename,key,seen,now,os.environ.get("MUSIC_GAIN_PERCENT","120"))
+        return
     redo_story_links=os.environ.get("REDO_STORY_LINKS","").strip()
     if redo_story_links:
         try: requested=json.loads(redo_story_links)
@@ -471,19 +532,9 @@ def main():
     ]
     all_turns=intro_turns+turns+outro_turns
     local=now.astimezone(ZoneInfo(TZ));fn=f"ai-brief-{local:%Y-%m-%d-%H%M}.mp3"
-    wav=os.path.join(SITE,"episode.wav");mp3=os.path.join(SITE,fn)
-    intro_voice=os.path.join(SITE,"intro-voice.wav");outro_voice=os.path.join(SITE,"outro-voice.wav")
-    intro_music=os.path.join(SITE,"intro-music.wav");outro_music=os.path.join(SITE,"outro-music.wav")
-    intro_mix=os.path.join(SITE,"intro-mix.wav");outro_mix=os.path.join(SITE,"outro-mix.wav")
-    audio(intro_turns,key,intro_voice)
-    audio(turns,key,wav)
-    audio(outro_turns,key,outro_voice)
-    mix_voice_with_music(intro_voice,intro_music,intro_mix)
-    mix_voice_with_music(outro_voice,outro_music,outro_mix,ending=True)
-    concat="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[body];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[outro];[intro][body][outro]concat=n=3:v=0:a=1,atempo=1.1[episode]"
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro_mix,"-i",wav,"-i",outro_mix,"-filter_complex",concat,"-map","[episode]","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
-    for temp in (wav,intro_voice,outro_voice,intro_music,outro_music,intro_mix,outro_mix):
-        if os.path.exists(temp):os.remove(temp)
+    mp3=os.path.join(SITE,fn)
+    gain_percent=os.environ.get("MUSIC_GAIN_PERCENT","120")
+    render_episode_audio(intro_turns,turns,outro_turns,key,mp3,gain_percent)
     size=os.path.getsize(mp3)
     if size<10000:raise RuntimeError("Generated MP3 is unexpectedly small.")
     title=clean(brief["title"],160)
