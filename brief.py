@@ -339,10 +339,14 @@ def audio(turns,key,wav):
         os.remove(path)
 
 
-def make_music_bed(path,duration,ending=False):
+def make_music_bed(path,duration,ending=False,tempo_percent=120):
     # Original soft chord-and-arpeggio bed, with a gentle resolution for the outro.
     rate=24000
-    chord_length=1.55
+    try:tempo_percent=float(tempo_percent)
+    except (TypeError,ValueError) as e:raise RuntimeError("MUSIC_TEMPO_PERCENT must be a number from 50 to 200.") from e
+    if not 50<=tempo_percent<=200:raise RuntimeError("MUSIC_TEMPO_PERCENT must be between 50 and 200.")
+    tempo_scale=100.0/tempo_percent
+    chord_length=1.55*tempo_scale
     g=(196.00,246.94,293.66,392.00)
     d=(146.83,185.00,220.00,293.66)
     em=(164.81,196.00,246.94,329.63)
@@ -358,13 +362,13 @@ def make_music_bed(path,duration,ending=False):
         chord=chords[chord_index]
         attack=min(1.0,local/0.24)
         release=min(1.0,max(0.0,(chord_length-local)/0.24))
-        pad_env=attack*release*(0.94+0.06*math.sin(2*math.pi*0.38*t))
+        pad_env=attack*release*(0.94+0.06*math.sin(2*math.pi*0.38*(1.0/tempo_scale)*t))
         value=0.0
         for note in chord:
             phase=2*math.pi*note*t
             value+=0.030*pad_env*(0.78*math.sin(phase)+0.18*math.sin(phase*2)+0.04*math.sin(phase*3))
         # A quiet, rounded arpeggio gives the cue a recognizable musical shape.
-        beat=0.39
+        beat=0.39*tempo_scale
         beat_index=int(t/beat)
         pluck_t=t-beat_index*beat
         pluck_freq=chord[(beat_index%3)+1]
@@ -390,10 +394,10 @@ def music_gain_fraction(percent=None):
     if not 0<=value<=300:raise RuntimeError("MUSIC_GAIN_PERCENT must be between 0 and 300.")
     return 0.35*(value/100.0)
 
-def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percent=120):
+def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percent=120,tempo_percent=120):
     voice_len=voice_duration(voice_path)
     tail=3.2 if ending else 0.0
-    make_music_bed(music_path,voice_len+tail,ending=ending)
+    make_music_bed(music_path,voice_len+tail,ending=ending,tempo_percent=tempo_percent)
     voice_filter="[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=1.0"
     if tail:
         voice_filter+=f",apad=pad_dur={tail}"
@@ -402,19 +406,19 @@ def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percen
     mix=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[bed];{voice_filter};[bed][voice]amix=inputs=2:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",music_path,"-i",voice_path,"-filter_complex",mix,"-map","[out]","-c:a","pcm_s16le",out_path],check=True)
 
-def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=120):
+def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=120,tempo_percent=120):
     paths={name:os.path.join(SITE,f"remix-{name}.wav") for name in ("intro-voice","body-voice","outro-voice","intro-music","outro-music","intro-mix","outro-mix")}
     audio(intro_turns,key,paths["intro-voice"])
     audio(body_turns,key,paths["body-voice"])
     audio(outro_turns,key,paths["outro-voice"])
-    mix_voice_with_music(paths["intro-voice"],paths["intro-music"],paths["intro-mix"],gain_percent=gain_percent)
-    mix_voice_with_music(paths["outro-voice"],paths["outro-music"],paths["outro-mix"],ending=True,gain_percent=gain_percent)
+    mix_voice_with_music(paths["intro-voice"],paths["intro-music"],paths["intro-mix"],gain_percent=gain_percent,tempo_percent=tempo_percent)
+    mix_voice_with_music(paths["outro-voice"],paths["outro-music"],paths["outro-mix"],ending=True,gain_percent=gain_percent,tempo_percent=tempo_percent)
     concat="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[body];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[outro];[intro][body][outro]concat=n=3:v=0:a=1,atempo=1.1[episode]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",paths["intro-mix"],"-i",paths["body-voice"],"-i",paths["outro-mix"],"-filter_complex",concat,"-map","[episode]","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
     for path in paths.values():
         if os.path.exists(path):os.remove(path)
 
-def remix_episode(base,filename,key,seen,now,gain_percent):
+def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
     if os.path.basename(filename)!=filename or not filename.endswith(".mp3"):
         raise RuntimeError("REMIX_EPISODE_FILENAME must be an MP3 filename from the existing feed.")
     feed=os.path.join(SITE,"feed.xml")
@@ -440,18 +444,20 @@ def remix_episode(base,filename,key,seen,now,gain_percent):
     filename_out=f"ai-brief-{local:%Y-%m-%d-%H%M%S}-mix{int(gain_percent)}.mp3"
     path_out=os.path.join(SITE,"episodes",filename_out)
     os.makedirs(os.path.dirname(path_out),exist_ok=True)
-    render_episode_audio(intro_turns,body_turns,outro_turns,key,path_out,gain_percent)
+    render_episode_audio(intro_turns,body_turns,outro_turns,key,path_out,gain_percent,tempo_percent)
     size=os.path.getsize(path_out)
     if size<10000:raise RuntimeError("Remixed MP3 is unexpectedly small.")
     title=html.unescape(title_match.group(1))
-    delta=float(gain_percent)-100
-    label=f"Music {'+' if delta>=0 else ''}{delta:g}%"
+    gain_delta=float(gain_percent)-100;tempo_delta=float(tempo_percent)-100
+    gain_label=f"{'+' if gain_delta>=0 else ''}{gain_delta:g}%"
+    tempo_label=f"{'+' if tempo_delta>=0 else ''}{tempo_delta:g}%"
+    label=f"Music {gain_label}, tempo {tempo_label}"
     item=f'''<item><title>{esc(title)} ({esc(label)})</title>{description}
 <pubDate>{email.utils.format_datetime(now)}</pubDate>
 <enclosure url="{base}/episodes/{filename_out}" length="{size}" type="audio/mpeg"/>
 <guid isPermaLink="false">{filename_out}</guid></item>'''
     publish(base,item,path_out,filename_out,[],seen,now)
-    log(f"REMIX COMPLETE {filename_out}: reused transcript for {filename} with music at {gain_percent}% of original mix.")
+    log(f"REMIX COMPLETE {filename_out}: reused transcript for {filename} with music at {gain_percent}% gain and {tempo_percent}% tempo.")
 
 def esc(s):
     return (s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;").replace("'","&apos;"))
@@ -497,7 +503,7 @@ def main():
     record_feed_health(statuses,now)
     remix_filename=os.environ.get("REMIX_EPISODE_FILENAME","").strip()
     if remix_filename:
-        remix_episode(base,remix_filename,key,seen,now,os.environ.get("MUSIC_GAIN_PERCENT","120"))
+        remix_episode(base,remix_filename,key,seen,now,os.environ.get("MUSIC_GAIN_PERCENT","120"),os.environ.get("MUSIC_TEMPO_PERCENT","120"))
         return
     redo_story_links=os.environ.get("REDO_STORY_LINKS","").strip()
     if redo_story_links:
@@ -536,7 +542,7 @@ def main():
     local=now.astimezone(ZoneInfo(TZ));fn=f"ai-brief-{local:%Y-%m-%d-%H%M}.mp3"
     mp3=os.path.join(SITE,fn)
     gain_percent=os.environ.get("MUSIC_GAIN_PERCENT","120")
-    render_episode_audio(intro_turns,turns,outro_turns,key,mp3,gain_percent)
+    render_episode_audio(intro_turns,turns,outro_turns,key,mp3,gain_percent,os.environ.get("MUSIC_TEMPO_PERCENT","120"))
     size=os.path.getsize(mp3)
     if size<10000:raise RuntimeError("Generated MP3 is unexpectedly small.")
     title=clean(brief["title"],160)
