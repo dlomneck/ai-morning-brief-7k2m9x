@@ -22,6 +22,11 @@ on:
         required: false
         type: string
         default: "120"
+      music_tempo_percent:
+        description: "Music bed tempo relative to its baseline; 120 means 20% faster"
+        required: false
+        type: string
+        default: "120"
 
 permissions:
   contents: write
@@ -61,6 +66,7 @@ jobs:
           REDO_STORY_LINKS: ${{ github.event.inputs.redo_story_links || '' }}
           REMIX_EPISODE_FILENAME: ${{ github.event.inputs.remix_episode_filename || '' }}
           MUSIC_GAIN_PERCENT: ${{ github.event.inputs.music_gain_percent || '120' }}
+          MUSIC_TEMPO_PERCENT: ${{ github.event.inputs.music_tempo_percent || '120' }}
         run: python3 brief.py
 
       - name: Add the touch-first web player
