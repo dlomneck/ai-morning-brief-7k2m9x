@@ -421,12 +421,14 @@ def remix_episode(base,filename,key,seen,now,gain_percent):
     candidates=old_items(feed)
     source=next((item for item in candidates if re.search(r"<guid[^>]*>"+re.escape(filename)+r"</guid>",item)),None)
     if not source:raise RuntimeError(f"Episode {filename} was not found in the current podcast feed.")
-    desc_match=re.search(r"<description>([\\s\\S]*?)</description>",source)
+    start=source.find("<description>")
+    end=source.find("</description>",start)
     title_match=re.search(r"<title>(.*?)</title>",source)
-    if not desc_match or not title_match:raise RuntimeError("The selected feed episode is missing its title or transcript.")
-    description=desc_match.group(0)
-    content=desc_match.group(1)
-    content=re.sub(r"^<!\\[CDATA\\[|\\]\\]>$","",content.strip())
+    if start<0 or end<0 or not title_match:raise RuntimeError("The selected feed episode is missing its title or transcript.")
+    description=source[start:end+len("</description>")]
+    content=description[len("<description>"):-len("</description>")].strip()
+    if content.startswith("<![CDATA[") and content.endswith("]]>"):
+        content=content[len("<![CDATA["):-len("]]>")]
     turns=[]
     for speaker,text in re.findall(r"<p><strong>(Alex|Jordan|Jasmine):</strong>(.*?)</p>",content,re.S):
         text=html.unescape(re.sub(r"<[^>]+>","",text)).strip()
