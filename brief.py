@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build a Gemini-narrated daily AI engineering brief and public RSS feed."""
-import base64, email.utils, html, json, os, re, subprocess, sys, time
+import base64, email.utils, html, json, math, os, re, struct, subprocess, sys, time, wave
 import urllib.error, urllib.parse, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -46,7 +46,7 @@ Make them sound like people thinking together, not alternating readers. Let a ho
 
 Aim for about 1,900 to 2,200 spoken words, roughly a 15-minute commute, when the reporting supports that depth. Do not shorten a worthwhile episode just to stay terse; do not pad to hit a number. On a very quiet day, publish=false remains the right choice. If one story dominates, explore it from a few useful angles; if several matter, prioritize and develop the strongest instead of mentioning everything briefly. Cite the originating publication casually in the dialogue for every discussed item, at least once per story.
 
-In the welcome, Alex introduces the brief and Jordan by name; if Jasmine joins, introduce Jasmine naturally as today's guest and use the name sparingly afterward. Set delivery to emphatic only for turns about unusually consequential developments that materially affect engineering practice, security, governance, or the AI-driven SDLC. Those turns should sound brighter and more energized, never shouting or hyping. Close with a practical takeaway or a signal worth watching.
+Give each episode a recognizable spoken frame without long boilerplate. Open with Alex welcoming listeners to the Morning AI Engineering Brief and naturally introducing Jordan; if Jasmine joins, introduce her as today's guest. Close with a concise practical takeaway or signal to watch, then a warm, brief sign-off. Set delivery to emphatic only for turns about unusually consequential developments that materially affect engineering practice, security, governance, or the AI-driven SDLC. Those turns should sound brighter and more energized, never shouting or hyping.
 
 Produce JSON only with keys publish (boolean), title (specific and useful, never date-only), turns (array of {speaker: Alex, Jordan, or Jasmine; text: spoken text; delivery: natural or emphatic}), and used_sources (array of the numbered source item IDs actually discussed). If publish is false, turns and used_sources should be empty and title should briefly explain no episode was made. Spoken language only inside turns: no headings, bullets, URLs, markdown, or em-dashes."""
 
@@ -338,6 +338,29 @@ def audio(turns,key,wav):
     for path in audio_paths:
         os.remove(path)
 
+
+def make_jingle(path,frequencies):
+    # A tiny original, warm major-key sonic logo: rising intro and falling sign-off.
+    rate=24000; beat=0.38; tail=0.42
+    frames=int((len(frequencies)*beat+tail)*rate)
+    samples=[]
+    for frame in range(frames):
+        t=frame/rate; value=0.0
+        for index,freq in enumerate(frequencies):
+            local=t-index*beat
+            if 0<=local<beat+tail:
+                attack=min(1.0,local/0.012)
+                release=min(1.0,max(0.0,(beat+tail-local)/0.16))
+                envelope=attack*release*math.exp(-3.8*local)
+                tone=(math.sin(2*math.pi*freq*local)
+                      +0.30*math.sin(2*math.pi*freq*2*local)
+                      +0.10*math.sin(2*math.pi*freq*3*local))
+                value+=0.16*envelope*tone
+        samples.append(max(-1.0,min(1.0,value)))
+    with wave.open(path,"wb") as f:
+        f.setnchannels(1);f.setsampwidth(2);f.setframerate(rate)
+        f.writeframes(b"".join(struct.pack("<h",int(sample*32767)) for sample in samples))
+
 def esc(s):
     return (s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;").replace("'","&apos;"))
 def cdata(s):return "<![CDATA["+s.replace("]]>","]]]]><![CDATA[>")+"]]>"
@@ -408,8 +431,14 @@ def main():
     local=now.astimezone(ZoneInfo(TZ));fn=f"ai-brief-{local:%Y-%m-%d-%H%M}.mp3"
     wav=os.path.join(SITE,"episode.wav");mp3=os.path.join(SITE,fn)
     audio(turns,key,wav)
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",wav,"-af","atempo=1.1","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
-    os.remove(wav);size=os.path.getsize(mp3)
+    intro=os.path.join(SITE,"intro-jingle.wav");outro=os.path.join(SITE,"outro-jingle.wav")
+    make_jingle(intro,[392.00,493.88,587.33,783.99])
+    make_jingle(outro,[587.33,493.88,392.00])
+    mix="[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[outro];[intro][voice][outro]concat=n=3:v=0:a=1,atempo=1.1[episode]"
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro,"-i",wav,"-i",outro,"-filter_complex",mix,"-map","[episode]","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
+    for temp in (wav,intro,outro):
+        if os.path.exists(temp):os.remove(temp)
+    size=os.path.getsize(mp3)
     if size<10000:raise RuntimeError("Generated MP3 is unexpectedly small.")
     title=clean(brief["title"],160)
     used=set(int(n) for n in brief.get("used_sources",[]) if str(n).isdigit())
