@@ -248,20 +248,32 @@ def narration(items,now,key):
     payload={"systemInstruction":{"parts":[{"text":PROMPT}]},
       "contents":[{"role":"user","parts":[{"text":f"Today is {now.astimezone(ZoneInfo(TZ)):%A, %B %d, %Y}. Review these public-source items and write today's narration.\n\n"+"\n\n---\n\n".join(src)}]}],
       "generationConfig":{"temperature":0.35,"maxOutputTokens":6000,"responseMimeType":"application/json"}}
-    url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL}:generateContent"
-    try:
-        r=request_json(url,payload,key,retries=4)
-    except RuntimeError as e:
-        if "Gemini HTTP 503:" not in str(e):raise
-        log(f"{TEXT_MODEL} remained unavailable after retries; trying {TEXT_MODEL_FALLBACK}.")
-        fallback_url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL_FALLBACK}:generateContent"
-        r=request_json(fallback_url,payload,key,retries=4)
-    parts=r.get("candidates",[{}])[0].get("content",{}).get("parts",[])
-    text=" ".join(p.get("text","") for p in parts).strip()
-    if not text:raise RuntimeError("Gemini returned no editorial response.")
-    try: brief=json.loads(text)
-    except json.JSONDecodeError as e: raise RuntimeError(f"Gemini returned invalid editorial JSON: {e}") from e
-    if not isinstance(brief.get("publish"),bool):raise RuntimeError("Editorial response is missing publish decision.")
+    brief=None
+    for model in (TEXT_MODEL,TEXT_MODEL_FALLBACK):
+        url=f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        try:
+            r=request_json(url,payload,key,retries=4)
+        except RuntimeError as e:
+            if "Gemini HTTP 503:" not in str(e):raise
+            log(f"{model} remained unavailable after retries.")
+            continue
+        parts=r.get("candidates",[{}])[0].get("content",{}).get("parts",[])
+        text=" ".join(p.get("text","") for p in parts).strip()
+        if not text:
+            log(f"{model} returned no editorial response; trying the next model.")
+            continue
+        try:
+            candidate=json.loads(text)
+        except json.JSONDecodeError as e:
+            log(f"{model} returned malformed editorial JSON ({e}); trying the next model.")
+            continue
+        if not isinstance(candidate,dict) or not isinstance(candidate.get("publish"),bool):
+            log(f"{model} returned an invalid editorial response; trying the next model.")
+            continue
+        brief=candidate
+        break
+    if brief is None:
+        raise RuntimeError("Gemini models did not return a valid editorial response after retries.")
     brief.setdefault("turns",[]);brief.setdefault("used_sources",[])
     if brief["publish"]:
         if not brief["turns"] or not brief.get("title"):raise RuntimeError("Published brief is missing title or dialogue.")
