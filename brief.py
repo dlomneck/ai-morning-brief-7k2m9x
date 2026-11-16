@@ -358,97 +358,67 @@ def audio(turns,key,wav):
 
 
 def make_music_bed(path,duration,ending=False,tempo_percent=120):
-    # Original soft chord-and-arpeggio bed, with a gentle resolution for the outro.
+    # Upbeat cyberpunk cue: minor synth chords, pulsing bass, and a repeating neon arpeggio.
     rate=24000
     try:tempo_percent=float(tempo_percent)
     except (TypeError,ValueError) as e:raise RuntimeError("MUSIC_TEMPO_PERCENT must be a number from 50 to 200.") from e
     if not 50<=tempo_percent<=200:raise RuntimeError("MUSIC_TEMPO_PERCENT must be between 50 and 200.")
-    tempo_scale=100.0/tempo_percent
-    chord_length=1.55*tempo_scale
-    g=(196.00,246.94,293.66,392.00)
-    d=(146.83,185.00,220.00,293.66)
-    em=(164.81,196.00,246.94,329.63)
-    c=(130.81,164.81,196.00,293.66)
-    chords=[em,c,d,g] if ending else [g,d,em,c]
-    length=max(0.5,duration)
-    frames=int(length*rate)
-    samples=[]
-    for frame in range(frames):
-        t=frame/rate
-        chord_index=int(t/chord_length)%len(chords)
-        local=t%chord_length
-        chord=chords[chord_index]
-        attack=min(1.0,local/0.24)
-        release=min(1.0,max(0.0,(chord_length-local)/0.24))
-        pad_env=attack*release*(0.94+0.06*math.sin(2*math.pi*0.38*(1.0/tempo_scale)*t))
-        value=0.0
-        for note in chord:
-            phase=2*math.pi*note*t
-            value+=0.030*pad_env*(0.78*math.sin(phase)+0.18*math.sin(phase*2)+0.04*math.sin(phase*3))
-        # A quiet, rounded arpeggio gives the cue a recognizable musical shape.
-        beat=0.39*tempo_scale
-        beat_index=int(t/beat)
-        pluck_t=t-beat_index*beat
-        pluck_freq=chord[(beat_index%3)+1]
-        if pluck_t<0.32:
-            pluck_env=math.exp(-8.0*pluck_t)*min(1.0,pluck_t/0.008)
-            value+=0.048*pluck_env*(math.sin(2*math.pi*pluck_freq*pluck_t)+0.20*math.sin(4*math.pi*pluck_freq*pluck_t))
-        fade_in=min(1.0,t/0.30)
-        fade_out=min(1.0,max(0.0,(length-t)/0.75))
-        value*=fade_in*fade_out
-        samples.append(max(-1.0,min(1.0,value)))
+    beat=.50*100.0/tempo_percent
+    chords=[(82.41,123.47,164.81,196.00),(65.41,98.00,130.81,164.81),(73.42,110.00,146.83,185.00),(98.00,146.83,196.00,246.94)]
+    motif=(659.25,587.33,493.88,587.33,783.99,698.46,587.33,493.88)
+    length=max(.5,duration);samples=[]
+    for frame in range(int(length*rate)):
+        t=frame/rate;local=t%beat;step=int(t/beat);chord=chords[(int(t/(beat*4))+(0 if ending else 1))%4]
+        env=min(1,local/.035)*min(1,max(0,(beat-local)/.045));value=0
+        for note in chord[1:]:
+            phase=2*math.pi*note*t;value+=.018*env*(math.sin(phase)+.28*math.sin(phase*1.006)+.16*math.sin(phase*2))
+        n=motif[(step+(4 if ending else 0))%8];nt=t-step*beat
+        value+=.075*math.exp(-5.5*nt)*min(1,nt/.004)*(math.sin(2*math.pi*n*nt)+.24*math.sin(4*math.pi*n*nt))
+        value+=.045*math.exp(-11*local)*min(1,local/.006)*math.sin(2*math.pi*chord[0]*local)
+        fade=min(1,t/.75) if ending else 1
+        if not ending:fade*=min(1,max(0,(length-t)/2.0))
+        samples.append(max(-1,min(1,value*fade)))
     with wave.open(path,"wb") as f:
         f.setnchannels(1);f.setsampwidth(2);f.setframerate(rate)
-        f.writeframes(b"".join(struct.pack("<h",int(sample*32767)) for sample in samples))
+        f.writeframes(b"".join(struct.pack("<h",int(x*32767)) for x in samples))
 
 def voice_duration(path):
-    with wave.open(path,"rb") as f:
-        return f.getnframes()/float(f.getframerate())
+    with wave.open(path,"rb") as f:return f.getnframes()/float(f.getframerate())
 
 def music_gain_fraction(percent=None):
-    raw=os.environ.get("MUSIC_GAIN_PERCENT","144") if percent is None else percent
+    raw=os.environ.get("MUSIC_GAIN_PERCENT","173") if percent is None else percent
     try:value=float(raw)
     except (TypeError,ValueError) as e:raise RuntimeError("MUSIC_GAIN_PERCENT must be a number from 0 to 300.") from e
     if not 0<=value<=300:raise RuntimeError("MUSIC_GAIN_PERCENT must be between 0 and 300.")
-    return 0.35*(value/100.0)
+    return .35*(value/100.0)
 
-def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percent=120,tempo_percent=120):
-    voice_len=voice_duration(voice_path)
-    tail=3.2 if ending else 0.0
-    make_music_bed(music_path,voice_len+tail,ending=ending,tempo_percent=tempo_percent)
-    voice_filter="[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume=1.0"
-    if tail:
-        voice_filter+=f",apad=pad_dur={tail}"
-    voice_filter+="[voice]"
-    gain=music_gain_fraction(gain_percent)
-    mix=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[bed];{voice_filter};[bed][voice]amix=inputs=2:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",music_path,"-i",voice_path,"-filter_complex",mix,"-map","[out]","-c:a","pcm_s16le",out_path],check=True)
+def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percent=173,tempo_percent=120):
+    length=voice_duration(voice_path);make_music_bed(music_path,length,ending,tempo_percent);gain=music_gain_fraction(gain_percent)
+    filt=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[bed];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[bed][voice]amix=inputs=2:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",music_path,"-i",voice_path,"-filter_complex",filt,"-map","[out]","-c:a","pcm_s16le",out_path],check=True)
 
 def estimated_speech_seconds(turns):
     words=sum(len(t.get("text","").split()) for t in turns)
     return max(2.0,words/2.2+0.4)
 
-def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=144,tempo_percent=120):
-    # Render dialogue once, then lay music only beneath the opening and sign-off.
-    voice=os.path.join(SITE,"remix-voice.wav")
-    intro_music=os.path.join(SITE,"remix-intro-music.wav")
-    outro_music=os.path.join(SITE,"remix-outro-music.wav")
-    mixed=os.path.join(SITE,"remix-mixed.wav")
-    all_turns=intro_turns+body_turns+outro_turns
-    audio(all_turns,key,voice)
-    voice_len=voice_duration(voice)
-    intro_len=min(voice_len,estimated_speech_seconds(intro_turns))
-    outro_speech_len=estimated_speech_seconds(outro_turns)
-    tail=3.2
-    outro_start=max(intro_len,voice_len-outro_speech_len)
-    make_music_bed(intro_music,intro_len,tempo_percent=tempo_percent)
-    make_music_bed(outro_music,outro_speech_len+tail,ending=True,tempo_percent=tempo_percent)
-    gain=music_gain_fraction(gain_percent)
-    delay_ms=int(outro_start*1000)
-    mix=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,apad=pad_dur={tail}[voice];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,adelay={delay_ms}|{delay_ms},volume={gain}[outro];[intro][voice][outro]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro_music,"-i",voice,"-i",outro_music,"-filter_complex",mix,"-map","[out]","-c:a","pcm_s16le",mixed],check=True)
+def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=173,tempo_percent=120):
+    # Isolated TTS sections give exact boundaries for the 2s intro pause and music fades.
+    paths=[os.path.join(SITE,"remix-"+n+".wav") for n in ("intro","body","outro")]
+    intro,body,outro=paths;silence=os.path.join(SITE,"remix-silence.wav")
+    timeline=os.path.join(SITE,"remix-voice.wav");im=os.path.join(SITE,"remix-intro-music.wav")
+    om=os.path.join(SITE,"remix-outro-music.wav");mixed=os.path.join(SITE,"remix-mixed.wav")
+    audio(intro_turns,key,intro);audio(body_turns,key,body);audio(outro_turns,key,outro)
+    il=voice_duration(intro);bl=voice_duration(body);ol=voice_duration(outro)
+    with wave.open(silence,"wb") as f:
+        f.setnchannels(1);f.setsampwidth(2);f.setframerate(24000);f.writeframes(bytes(96000))
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro,"-i",silence,"-i",body,"-i",outro,
+      "-filter_complex","[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a0];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a1];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a2];[3:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a3];[a0][a1][a2][a3]concat=n=4:v=0:a=1[out]","-map","[out]","-c:a","pcm_s16le",timeline],check=True)
+    make_music_bed(im,il,False,tempo_percent);make_music_bed(om,ol,True,tempo_percent)
+    gain=music_gain_fraction(gain_percent);delay=int((il+2+bl)*1000)
+    filt=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,adelay={delay}|{delay},volume={gain}[outro];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[intro][outro][voice]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",im,"-i",om,"-i",timeline,"-filter_complex",filt,"-map","[out]","-c:a","pcm_s16le",mixed],check=True)
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",mixed,"-af","atempo=1.1","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
-    for path in (voice,intro_music,outro_music,mixed):
+    for path in paths+[silence,timeline,im,om,mixed]:
         if os.path.exists(path):os.remove(path)
 
 def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
@@ -481,10 +451,9 @@ def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
     size=os.path.getsize(path_out)
     if size<10000:raise RuntimeError("Remixed MP3 is unexpectedly small.")
     title=html.unescape(title_match.group(1))
-    gain_delta=float(gain_percent)-100;tempo_delta=float(tempo_percent)-100
-    gain_label=f"{'+' if gain_delta>=0 else ''}{gain_delta:g}%"
-    tempo_label=f"{'+' if tempo_delta>=0 else ''}{tempo_delta:g}%"
-    label=f"Music {gain_label}, tempo {tempo_label}"
+    gain_delta=(float(gain_percent)/144.0-1.0)*100.0
+    gain_label=f"{'+' if gain_delta>=0 else ''}{gain_delta:.0f}% vs prior mix"
+    label=f"Cyberpunk synth, music {gain_label}"
     item=f'''<item><title>{esc(title)} ({esc(label)})</title>{description}
 <pubDate>{email.utils.format_datetime(now)}</pubDate>
 <enclosure url="{base}/episodes/{filename_out}" length="{size}" type="audio/mpeg"/>
@@ -536,7 +505,7 @@ def main():
     record_feed_health(statuses,now)
     remix_filename=os.environ.get("REMIX_EPISODE_FILENAME","").strip()
     if remix_filename:
-        remix_episode(base,remix_filename,key,seen,now,os.environ.get("MUSIC_GAIN_PERCENT","120"),os.environ.get("MUSIC_TEMPO_PERCENT","120"))
+        remix_episode(base,remix_filename,key,seen,now,os.environ.get("MUSIC_GAIN_PERCENT","173"),os.environ.get("MUSIC_TEMPO_PERCENT","120"))
         return
     redo_story_links=os.environ.get("REDO_STORY_LINKS","").strip()
     if not redo_story_links:
