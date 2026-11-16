@@ -357,30 +357,44 @@ def audio(turns,key,wav):
         os.remove(path)
 
 
-def make_music_bed(path,duration,ending=False,tempo_percent=120):
-    # Upbeat cyberpunk cue: minor synth chords, pulsing bass, and a repeating neon arpeggio.
+def write_music_theme(path,ending=False,tempo_percent=120,duration=8.0):
+    # Fixed cyberpunk synth motif. Store once in the published site and reuse it.
     rate=24000
-    try:tempo_percent=float(tempo_percent)
-    except (TypeError,ValueError) as e:raise RuntimeError("MUSIC_TEMPO_PERCENT must be a number from 50 to 200.") from e
-    if not 50<=tempo_percent<=200:raise RuntimeError("MUSIC_TEMPO_PERCENT must be between 50 and 200.")
     beat=.50*100.0/tempo_percent
     chords=[(82.41,123.47,164.81,196.00),(65.41,98.00,130.81,164.81),(73.42,110.00,146.83,185.00),(98.00,146.83,196.00,246.94)]
     motif=(659.25,587.33,493.88,587.33,783.99,698.46,587.33,493.88)
-    length=max(.5,duration);samples=[]
-    for frame in range(int(length*rate)):
-        t=frame/rate;local=t%beat;step=int(t/beat);chord=chords[(int(t/(beat*4))+(0 if ending else 1))%4]
+    samples=[]
+    for frame in range(int(duration*rate)):
+        t=frame/rate;local=t%beat;step=int(t/(beat/2))
+        chord=chords[(int(t/(beat*4))+(0 if ending else 1))%4]
         env=min(1,local/.035)*min(1,max(0,(beat-local)/.045));value=0
         for note in chord[1:]:
-            phase=2*math.pi*note*t;value+=.018*env*(math.sin(phase)+.28*math.sin(phase*1.006)+.16*math.sin(phase*2))
-        n=motif[(step+(4 if ending else 0))%8];nt=t-step*beat
-        value+=.075*math.exp(-5.5*nt)*min(1,nt/.004)*(math.sin(2*math.pi*n*nt)+.24*math.sin(4*math.pi*n*nt))
+            phase=2*math.pi*note*t
+            value+=.018*env*(math.sin(phase)+.28*math.sin(phase*1.006)+.16*math.sin(phase*2))
+        n=motif[(step+(4 if ending else 0))%8];nt=t-step*(beat/2)
+        value+=.075*math.exp(-7.0*nt)*min(1,nt/.004)*(math.sin(2*math.pi*n*nt)+.24*math.sin(4*math.pi*n*nt))
         value+=.045*math.exp(-11*local)*min(1,local/.006)*math.sin(2*math.pi*chord[0]*local)
-        fade=min(1,t/.75) if ending else 1
-        if not ending:fade*=min(1,max(0,(length-t)/2.0))
-        samples.append(max(-1,min(1,value*fade)))
+        samples.append(max(-1,min(1,value)))
     with wave.open(path,"wb") as f:
         f.setnchannels(1);f.setsampwidth(2);f.setframerate(rate)
         f.writeframes(b"".join(struct.pack("<h",int(x*32767)) for x in samples))
+
+def make_music_bed(path,duration,ending=False,tempo_percent=120):
+    try:tempo_percent=float(tempo_percent)
+    except (TypeError,ValueError) as e:raise RuntimeError("MUSIC_TEMPO_PERCENT must be a number from 50 to 200.") from e
+    if not 50<=tempo_percent<=200:raise RuntimeError("MUSIC_TEMPO_PERCENT must be between 50 and 200.")
+    length=max(.5,float(duration))
+    theme_dir=os.path.join(SITE,"music")
+    os.makedirs(theme_dir,exist_ok=True)
+    theme=os.path.join(theme_dir,"cyberpunk-outro.wav" if ending else "cyberpunk-intro.wav")
+    if not os.path.exists(theme):
+        write_music_theme(theme,ending,tempo_percent)
+        log(f"STORED MUSIC THEME {os.path.basename(theme)}")
+    if ending:
+        fades=f"afade=t=in:st=0:d={min(.75,length)}"
+    else:
+        fades=f"afade=t=out:st={max(0.0,length-2.0)}:d={min(2.0,length)}"
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-stream_loop","-1","-i",theme,"-t",str(length),"-af",fades,"-c:a","pcm_s16le",path],check=True)
 
 def voice_duration(path):
     with wave.open(path,"rb") as f:return f.getnframes()/float(f.getframerate())
@@ -408,17 +422,20 @@ def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent
     timeline=os.path.join(SITE,"remix-voice.wav");im=os.path.join(SITE,"remix-intro-music.wav")
     om=os.path.join(SITE,"remix-outro-music.wav");mixed=os.path.join(SITE,"remix-mixed.wav")
     audio(intro_turns,key,intro);audio(body_turns,key,body);audio(outro_turns,key,outro)
+    silence_end=os.path.join(SITE,"remix-silence-end.wav")
     il=voice_duration(intro);bl=voice_duration(body);ol=voice_duration(outro)
     with wave.open(silence,"wb") as f:
         f.setnchannels(1);f.setsampwidth(2);f.setframerate(24000);f.writeframes(bytes(96000))
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro,"-i",silence,"-i",body,"-i",outro,
-      "-filter_complex","[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a0];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a1];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a2];[3:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a3];[a0][a1][a2][a3]concat=n=4:v=0:a=1[out]","-map","[out]","-c:a","pcm_s16le",timeline],check=True)
+    with wave.open(silence_end,"wb") as f:
+        f.setnchannels(1);f.setsampwidth(2);f.setframerate(24000);f.writeframes(bytes(96000))
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro,"-i",silence,"-i",body,"-i",outro,"-i",silence_end,
+      "-filter_complex","[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a0];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a1];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a2];[3:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a3];[4:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a4];[a0][a1][a2][a3][a4]concat=n=5:v=0:a=1[out]","-map","[out]","-c:a","pcm_s16le",timeline],check=True)
     make_music_bed(im,il,False,tempo_percent);make_music_bed(om,ol,True,tempo_percent)
     gain=music_gain_fraction(gain_percent);delay=int((il+2+bl)*1000)
     filt=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,adelay={delay}|{delay},volume={gain}[outro];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[intro][outro][voice]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",im,"-i",om,"-i",timeline,"-filter_complex",filt,"-map","[out]","-c:a","pcm_s16le",mixed],check=True)
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",mixed,"-af","atempo=1.1","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
-    for path in paths+[silence,timeline,im,om,mixed]:
+    for path in paths+[silence,silence_end,timeline,im,om,mixed]:
         if os.path.exists(path):os.remove(path)
 
 def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
