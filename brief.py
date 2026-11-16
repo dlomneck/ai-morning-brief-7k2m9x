@@ -523,6 +523,15 @@ def main():
         remix_episode(base,remix_filename,key,seen,now,os.environ.get("MUSIC_GAIN_PERCENT","120"),os.environ.get("MUSIC_TEMPO_PERCENT","120"))
         return
     redo_story_links=os.environ.get("REDO_STORY_LINKS","").strip()
+    if not redo_story_links:
+        local_date=now.astimezone(ZoneInfo(TZ)).strftime("%Y-%m-%d")
+        feed_path=os.path.join(SITE,"feed.xml")
+        if os.path.exists(feed_path):
+            existing_feed=open(feed_path,encoding="utf-8").read()
+            if f"episodes/ai-brief-{local_date}-" in existing_feed:
+                log(f"An episode for {local_date} is already published; skipping duplicate run.")
+                publish(base,None,None,None,[],seen,now)
+                return
     if redo_story_links:
         try: requested=json.loads(redo_story_links)
         except json.JSONDecodeError as e: raise RuntimeError(f"REDO_STORY_LINKS must be a JSON array: {e}") from e
