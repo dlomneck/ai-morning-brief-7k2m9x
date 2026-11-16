@@ -203,26 +203,30 @@ def repair_source_ids(brief,items,key):
     payload={"systemInstruction":{"parts":[{"text":"Map the factual stories discussed in the supplied podcast script to the numbered source items. Return JSON only with one key, used_sources, whose value is an array of integer IDs. Include only items clearly discussed and directly supporting a claim. Never invent an ID. If no item supports a claim, omit it."}]},
       "contents":[{"role":"user","parts":[{"text":"SCRIPT:\n"+script+"\n\nNUMBERED SOURCE ITEMS:\n"+"\n\n".join(candidates)}]}],
       "generationConfig":{"temperature":0,"maxOutputTokens":500,"responseMimeType":"application/json"}}
-    url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL}:generateContent"
-    try:
-        response=request_json(url,payload,key,retries=2)
-    except RuntimeError as e:
-        if "Gemini HTTP 503:" not in str(e):raise
-        log(f"{TEXT_MODEL} unavailable during source recovery; trying {TEXT_MODEL_FALLBACK}.")
-        url=f"https://generativelanguage.googleapis.com/v1beta/models/{TEXT_MODEL_FALLBACK}:generateContent"
-        response=request_json(url,payload,key,retries=2)
-    parts=response.get("candidates",[{}])[0].get("content",{}).get("parts",[])
-    text=" ".join(p.get("text","") for p in parts).strip()
-    if not text:
-        log("Source recovery returned no response.")
-        return []
-    try:
-        result=json.loads(text)
-    except json.JSONDecodeError:
-        log("Source recovery returned invalid JSON.")
-        return []
-    raw=result.get("used_sources",[]) if isinstance(result,dict) else []
-    return normalize_source_ids(raw,len(items))
+    for model in (TEXT_MODEL,TEXT_MODEL_FALLBACK):
+        url=f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        try:
+            response=request_json(url,payload,key,retries=4)
+        except RuntimeError as e:
+            if "Gemini HTTP 503:" not in str(e):raise
+            log(f"{model} unavailable during source recovery.")
+            continue
+        parts=response.get("candidates",[{}])[0].get("content",{}).get("parts",[])
+        text=" ".join(p.get("text","") for p in parts).strip()
+        if not text:
+            log(f"{model} source recovery returned no response; trying the next model.")
+            continue
+        try:
+            result=json.loads(text)
+        except json.JSONDecodeError:
+            log(f"{model} source recovery returned invalid JSON; trying the next model.")
+            continue
+        raw=result.get("used_sources",[]) if isinstance(result,dict) else []
+        ids=normalize_source_ids(raw,len(items))
+        if ids:
+            return ids
+        log(f"{model} source recovery returned no valid source IDs; trying the next model.")
+    return []
 
 def normalize_source_ids(raw,item_count):
     if not isinstance(raw,list):return []
