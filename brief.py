@@ -623,7 +623,7 @@ def main():
     def transcript_text(value):
         # Keep spoken backchannel words, but hide TTS-only overlap and pause markup in RSS transcripts.
         value=re.sub(r"<(?:short|long pause)>","",value)
-        value=re.sub(r"\\|([^|]+)\\|",r"\\1",value)
+        value=re.sub(r"\|([^|]+)\|",r"\1",value)
         return value.strip()
     dialogue="".join(f'<p><strong>{esc(t.get("speaker",""))}:</strong> {esc(transcript_text(t.get("text","")))}</p>' for t in all_turns if transcript_text(t.get("text","")))
     notes=cdata(f"<p><strong>Episode transcript</strong></p>{dialogue}<p><strong>Sources</strong></p><ul>{links}</ul>")
