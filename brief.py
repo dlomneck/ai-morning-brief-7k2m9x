@@ -292,7 +292,7 @@ def narration(items,now,key):
 def audio(turns,key,wav):
     voice_by_speaker={"Alex":"Algenib","Jordan":"Kore","Jasmine":"Aoede"}
     style_by_speaker={
-        "Alex":"Warm, upbeat, naturally animated podcast host; conversational pacing, friendly co-host energy, clear articulation. Keep the selected voice's gravelly texture subtle and natural.",
+        "Alex":"Warm, friendly podcast-host delivery; conversational, naturally animated, and clear. Keep the selected voice's gravelly texture subtle and natural; avoid formal narration.",
         "Jordan":"Thoughtful, candid, grounded analyst; subtle conversational energy, clear delivery, measured emphasis.",
         "Jasmine":"Incisive, curious guest; collegial and lightly wry, with a subtle, natural contemporary British English accent. Keep the accent understated and never caricatured."
     }
@@ -330,7 +330,7 @@ def audio(turns,key,wav):
             if delivery not in ("natural","emphatic"):delivery="natural"
             style=style_by_speaker[speaker]
             if delivery=="emphatic":
-                style+=" For this unusually consequential development, sound noticeably more energized and excited, with brighter tone and stronger emphasis, while staying natural and never shouting or sounding sensational."
+                style+=" For this unusually consequential development, shift toward a more promotional, upbeat podcast energy: inviting and excited, with brighter tone and stronger emphasis, but never like an advertisement, never shouting, and never sensational."
             content.append({"type":"text","text":text,"annotations":[{"type":"speech_metadata","speaker":speaker,"style":style}]})
         if not content:
             continue
