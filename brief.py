@@ -290,9 +290,9 @@ def narration(items,now,key):
         brief["used_sources"]=ids
     return brief
 def audio(turns,key,wav):
-    voice_by_speaker={"Alex":"Puck","Jordan":"Kore","Jasmine":"Aoede"}
+    voice_by_speaker={"Alex":"Algenib","Jordan":"Kore","Jasmine":"Aoede"}
     style_by_speaker={
-        "Alex":"Warm, upbeat, naturally animated podcast host; conversational pacing, friendly co-host energy, clear articulation.",
+        "Alex":"Warm, upbeat, naturally animated podcast host; conversational pacing, friendly co-host energy, clear articulation. Keep the selected voice's gravelly texture subtle and natural.",
         "Jordan":"Thoughtful, candid, grounded analyst; subtle conversational energy, clear delivery, measured emphasis.",
         "Jasmine":"Incisive, curious guest; collegial and lightly wry, with a subtle, natural contemporary British English accent. Keep the accent understated and never caricatured."
     }
@@ -477,7 +477,7 @@ def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent
     outro_start=int((il+1.5+2.0+bl)*1000)
     filt=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,adelay={outro_start}|{outro_start},volume={gain}[outro];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[intro][outro][voice]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",im,"-i",om,"-i",timeline,"-filter_complex",filt,"-map","[out]","-c:a","pcm_s16le",mixed],check=True)
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",mixed,"-af","atempo=1.1","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
+    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",mixed,"-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
     for path in paths+[silence_tail,silence_gap,silence_final,timeline,im,om,mixed]:
         if os.path.exists(path):os.remove(path)
 
