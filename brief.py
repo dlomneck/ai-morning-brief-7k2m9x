@@ -410,12 +410,14 @@ def make_music_bed(path,duration,ending=False,tempo_percent=120):
     length=max(.5,float(duration))
     theme_dir=os.path.join(SITE,"music")
     os.makedirs(theme_dir,exist_ok=True)
-    theme=os.path.join(theme_dir,"cyberpunk-outro-v3.wav" if ending else "cyberpunk-intro-v3.wav")
+    theme=os.path.join(theme_dir,"cyberpunk-outro-v4.wav" if ending else "cyberpunk-intro-v3.wav")
     if not os.path.exists(theme):
-        write_music_theme(theme,ending,tempo_percent,10.0 if ending else 6.5)
+        write_music_theme(theme,ending,tempo_percent,18.0 if ending else 6.5)
         log(f"STORED MUSIC THEME {os.path.basename(theme)}")
     if ending:
-        fades=f"afade=t=in:st=0:d={min(.75,length)}"
+        fade_in=f"afade=t=in:st=0:d={min(.75,length)}"
+        fade_out=f"afade=t=out:st={max(0.0,length-2.0)}:d={min(2.0,length)}"
+        fades=f"{fade_in},{fade_out}"
     else:
         fades=f"afade=t=out:st={max(0.0,length-2.0)}:d={min(2.0,length)}"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-stream_loop","-1","-i",theme,"-t",str(length),"-af",fades,"-c:a","pcm_s16le",path],check=True)
@@ -445,19 +447,18 @@ def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent
     intro,body,outro=paths
     silence_tail=os.path.join(SITE,"remix-intro-music-tail.wav")
     silence_gap=os.path.join(SITE,"remix-intro-gap.wav")
-    silence_outro_tag=os.path.join(SITE,"remix-outro-music-tag.wav")
     silence_final=os.path.join(SITE,"remix-outro-final-silence.wav")
     timeline=os.path.join(SITE,"remix-voice.wav")
     im=os.path.join(SITE,"remix-intro-music.wav");om=os.path.join(SITE,"remix-outro-music.wav")
     mixed=os.path.join(SITE,"remix-mixed.wav")
     audio(intro_turns,key,intro);audio(body_turns,key,body);audio(outro_turns,key,outro)
     il=voice_duration(intro);bl=voice_duration(body);ol=voice_duration(outro)
-    silence_specs=((silence_tail,1.5),(silence_gap,2.0),(silence_outro_tag,2.0),(silence_final,2.0))
+    silence_specs=((silence_tail,1.5),(silence_gap,2.0),(silence_final,7.0))
     for path,duration in silence_specs:
         with wave.open(path,"wb") as f:
             f.setnchannels(1);f.setsampwidth(2);f.setframerate(24000)
             f.writeframes(bytes(int(24000*duration*2)))
-    sections=[intro,silence_tail,silence_gap,body,outro,silence_outro_tag,silence_final]
+    sections=[intro,silence_tail,silence_gap,body,outro,silence_final]
     command=["ffmpeg","-y","-hide_banner","-loglevel","error"]
     for path in sections:command.extend(["-i",path])
     filters=";".join(f"[{i}:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a{i}]" for i in range(len(sections)))
@@ -466,14 +467,14 @@ def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent
     subprocess.run(command,check=True)
     # The intro theme continues 1.5s beyond the spoken welcome, then the 2s gap begins.
     make_music_bed(im,il+1.5,False,tempo_percent)
-    # The outro gets a 2s instrumental cadence before its final 2s of silence.
-    make_music_bed(om,ol+2.0,True,tempo_percent)
+    # Keep five seconds of music after the sign-off, fade the last two seconds, then leave two seconds silent.
+    make_music_bed(om,ol+5.0,True,tempo_percent)
     gain=music_gain_fraction(gain_percent)
     outro_start=int((il+1.5+2.0+bl)*1000)
     filt=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,adelay={outro_start}|{outro_start},volume={gain}[outro];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[intro][outro][voice]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",im,"-i",om,"-i",timeline,"-filter_complex",filt,"-map","[out]","-c:a","pcm_s16le",mixed],check=True)
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",mixed,"-af","atempo=1.1","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
-    for path in paths+[silence_tail,silence_gap,silence_outro_tag,silence_final,timeline,im,om,mixed]:
+    for path in paths+[silence_tail,silence_gap,silence_final,timeline,im,om,mixed]:
         if os.path.exists(path):os.remove(path)
 
 def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
@@ -507,9 +508,9 @@ def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
     if size<10000:raise RuntimeError("Remixed MP3 is unexpectedly small.")
     title=html.unescape(title_match.group(1))
     title=re.sub(r" \(Cyberpunk synth, [^)]+\)$","",title)
-    gain_delta=(float(gain_percent)/144.0-1.0)*100.0
-    gain_label=f"{'+' if gain_delta>=0 else ''}{gain_delta:.0f}% vs prior mix"
-    label=f"Cyberpunk synth, melodic build, 2s outro pause, music {gain_label}"
+    gain_delta=(float(gain_percent)/173.0-1.0)*100.0
+    gain_label=f"{'+' if gain_delta>=0 else ''}{gain_delta:.0f}% vs last preview"
+    label=f"Cyberpunk synth, melodic build, 5s outro fade, 2s pause, music {gain_label}"
     item=f'''<item><title>{esc(title)} ({esc(label)})</title>{description}
 <pubDate>{email.utils.format_datetime(now)}</pubDate>
 <enclosure url="{base}/episodes/{filename_out}" length="{size}" type="audio/mpeg"/>
