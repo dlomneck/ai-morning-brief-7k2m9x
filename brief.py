@@ -426,13 +426,13 @@ def voice_duration(path):
     with wave.open(path,"rb") as f:return f.getnframes()/float(f.getframerate())
 
 def music_gain_fraction(percent=None):
-    raw=os.environ.get("MUSIC_GAIN_PERCENT","173") if percent is None else percent
+    raw=os.environ.get("MUSIC_GAIN_PERCENT","208") if percent is None else percent
     try:value=float(raw)
     except (TypeError,ValueError) as e:raise RuntimeError("MUSIC_GAIN_PERCENT must be a number from 0 to 300.") from e
     if not 0<=value<=300:raise RuntimeError("MUSIC_GAIN_PERCENT must be between 0 and 300.")
     return .35*(value/100.0)
 
-def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percent=173,tempo_percent=120):
+def mix_voice_with_music(voice_path,music_path,out_path,ending=False,gain_percent=208,tempo_percent=120):
     length=voice_duration(voice_path);make_music_bed(music_path,length,ending,tempo_percent);gain=music_gain_fraction(gain_percent)
     filt=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[bed];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[bed][voice]amix=inputs=2:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",music_path,"-i",voice_path,"-filter_complex",filt,"-map","[out]","-c:a","pcm_s16le",out_path],check=True)
@@ -441,7 +441,7 @@ def estimated_speech_seconds(turns):
     words=sum(len(t.get("text","").split()) for t in turns)
     return max(2.0,words/2.2+0.4)
 
-def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=173,tempo_percent=120):
+def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=208,tempo_percent=120):
     # Isolated TTS sections allow short musical tails, a clear intro gap, and an ending pause.
     paths=[os.path.join(SITE,"remix-"+n+".wav") for n in ("intro","body","outro")]
     intro,body,outro=paths
@@ -562,7 +562,7 @@ def main():
     record_feed_health(statuses,now)
     remix_filename=os.environ.get("REMIX_EPISODE_FILENAME","").strip()
     if remix_filename:
-        remix_episode(base,remix_filename,key,seen,now,os.environ.get("MUSIC_GAIN_PERCENT","173"),os.environ.get("MUSIC_TEMPO_PERCENT","120"))
+        remix_episode(base,remix_filename,key,seen,now,os.environ.get("MUSIC_GAIN_PERCENT","208"),os.environ.get("MUSIC_TEMPO_PERCENT","120"))
         return
     redo_story_links=os.environ.get("REDO_STORY_LINKS","").strip()
     if not redo_story_links:
@@ -609,7 +609,7 @@ def main():
     all_turns=intro_turns+turns+outro_turns
     local=now.astimezone(ZoneInfo(TZ));fn=f"ai-brief-{local:%Y-%m-%d-%H%M}.mp3"
     mp3=os.path.join(SITE,fn)
-    gain_percent=os.environ.get("MUSIC_GAIN_PERCENT","120")
+    gain_percent=os.environ.get("MUSIC_GAIN_PERCENT","208")
     render_episode_audio(intro_turns,turns,outro_turns,key,mp3,gain_percent,os.environ.get("MUSIC_TEMPO_PERCENT","120"))
     size=os.path.getsize(mp3)
     if size<10000:raise RuntimeError("Generated MP3 is unexpectedly small.")
