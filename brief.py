@@ -358,22 +358,46 @@ def audio(turns,key,wav):
 
 
 def write_music_theme(path,ending=False,tempo_percent=120,duration=8.0):
-    # Fixed cyberpunk synth motif. Store once in the published site and reuse it.
+    # Fixed, evolving cyberpunk motif: varied phrases, added layers, a crescendo,
+    # and a clear tonic resolution. These WAV themes are stored and reused.
     rate=24000
     beat=.50*100.0/tempo_percent
     chords=[(82.41,123.47,164.81,196.00),(65.41,98.00,130.81,164.81),(73.42,110.00,146.83,185.00),(98.00,146.83,196.00,246.94)]
-    motif=(659.25,587.33,493.88,587.33,783.99,698.46,587.33,493.88)
+    phrases=[
+        (659.25,None,587.33,493.88,587.33,None,783.99,698.46,659.25,587.33,None,493.88,880.00,783.99,698.46,None),
+        (587.33,None,659.25,783.99,698.46,None,587.33,493.88,659.25,783.99,880.00,None,783.99,698.46,587.33,None),
+        (493.88,None,587.33,659.25,783.99,None,698.46,587.33,659.25,None,783.99,880.00,987.77,880.00,783.99,None),
+        (659.25,None,783.99,880.00,987.77,None,880.00,783.99,698.46,783.99,880.00,None,783.99,698.46,587.33,392.00),
+    ]
     samples=[]
     for frame in range(int(duration*rate)):
-        t=frame/rate;local=t%beat;step=int(t/(beat/2))
-        chord=chords[(int(t/(beat*4))+(0 if ending else 1))%4]
-        env=min(1,local/.035)*min(1,max(0,(beat-local)/.045));value=0
+        t=frame/rate;progress=t/duration;local=t%beat
+        step=int(t/(beat/2));slot=step%16;bar=step//16
+        chord=chords[(bar+(0 if ending else 1))%4]
+        if ending and progress>.76:chord=chords[3]
+        value=0.0
+        env=min(1,local/.035)*min(1,max(0,(beat-local)/.045))
         for note in chord[1:]:
             phase=2*math.pi*note*t
-            value+=.018*env*(math.sin(phase)+.28*math.sin(phase*1.006)+.16*math.sin(phase*2))
-        n=motif[(step+(4 if ending else 0))%8];nt=t-step*(beat/2)
-        value+=.075*math.exp(-7.0*nt)*min(1,nt/.004)*(math.sin(2*math.pi*n*nt)+.24*math.sin(4*math.pi*n*nt))
-        value+=.045*math.exp(-11*local)*min(1,local/.006)*math.sin(2*math.pi*chord[0]*local)
+            value+=.016*env*(math.sin(phase)+.25*math.sin(phase*1.006)+.13*math.sin(phase*2))
+        phrase=phrases[(bar+(1 if ending else 0))%len(phrases)]
+        note=phrase[slot]
+        if note:
+            nt=t-(step*(beat/2))
+            value+=.055*math.exp(-6.5*nt)*min(1,nt/.004)*(math.sin(2*math.pi*note*nt)+.22*math.sin(4*math.pi*note*nt))
+        # A quiet counter-line joins after the opening bars to broaden the hook.
+        if progress>.28 and slot in (2,6,10,14):
+            harmony=chord[(slot//4)%3+1]*2.0
+            nt=t-(step*(beat/2))
+            value+=.018*math.exp(-7.5*nt)*min(1,nt/.004)*math.sin(2*math.pi*harmony*nt)
+        # Keep the low pulse steady while the synth layers grow around it.
+        bass_env=math.exp(-11*local)*min(1,local/.006)
+        value+=.038*bass_env*math.sin(2*math.pi*chord[0]*local)
+        if local<.12:
+            value+=.018*math.exp(-26*local)*math.sin(2*math.pi*52*local)
+        build=min(1.0,.32+.95*(progress/.62))
+        if progress>.82:build*=.88
+        value*=build
         samples.append(max(-1,min(1,value)))
     with wave.open(path,"wb") as f:
         f.setnchannels(1);f.setsampwidth(2);f.setframerate(rate)
@@ -386,9 +410,9 @@ def make_music_bed(path,duration,ending=False,tempo_percent=120):
     length=max(.5,float(duration))
     theme_dir=os.path.join(SITE,"music")
     os.makedirs(theme_dir,exist_ok=True)
-    theme=os.path.join(theme_dir,"cyberpunk-outro.wav" if ending else "cyberpunk-intro.wav")
+    theme=os.path.join(theme_dir,"cyberpunk-outro-v3.wav" if ending else "cyberpunk-intro-v3.wav")
     if not os.path.exists(theme):
-        write_music_theme(theme,ending,tempo_percent)
+        write_music_theme(theme,ending,tempo_percent,10.0 if ending else 6.5)
         log(f"STORED MUSIC THEME {os.path.basename(theme)}")
     if ending:
         fades=f"afade=t=in:st=0:d={min(.75,length)}"
@@ -416,26 +440,40 @@ def estimated_speech_seconds(turns):
     return max(2.0,words/2.2+0.4)
 
 def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=173,tempo_percent=120):
-    # Isolated TTS sections give exact boundaries for the 2s intro pause and music fades.
+    # Isolated TTS sections allow short musical tails, a clear intro gap, and an ending pause.
     paths=[os.path.join(SITE,"remix-"+n+".wav") for n in ("intro","body","outro")]
-    intro,body,outro=paths;silence=os.path.join(SITE,"remix-silence.wav")
-    timeline=os.path.join(SITE,"remix-voice.wav");im=os.path.join(SITE,"remix-intro-music.wav")
-    om=os.path.join(SITE,"remix-outro-music.wav");mixed=os.path.join(SITE,"remix-mixed.wav")
+    intro,body,outro=paths
+    silence_tail=os.path.join(SITE,"remix-intro-music-tail.wav")
+    silence_gap=os.path.join(SITE,"remix-intro-gap.wav")
+    silence_outro_tag=os.path.join(SITE,"remix-outro-music-tag.wav")
+    silence_final=os.path.join(SITE,"remix-outro-final-silence.wav")
+    timeline=os.path.join(SITE,"remix-voice.wav")
+    im=os.path.join(SITE,"remix-intro-music.wav");om=os.path.join(SITE,"remix-outro-music.wav")
+    mixed=os.path.join(SITE,"remix-mixed.wav")
     audio(intro_turns,key,intro);audio(body_turns,key,body);audio(outro_turns,key,outro)
-    silence_end=os.path.join(SITE,"remix-silence-end.wav")
     il=voice_duration(intro);bl=voice_duration(body);ol=voice_duration(outro)
-    with wave.open(silence,"wb") as f:
-        f.setnchannels(1);f.setsampwidth(2);f.setframerate(24000);f.writeframes(bytes(96000))
-    with wave.open(silence_end,"wb") as f:
-        f.setnchannels(1);f.setsampwidth(2);f.setframerate(24000);f.writeframes(bytes(96000))
-    subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",intro,"-i",silence,"-i",body,"-i",outro,"-i",silence_end,
-      "-filter_complex","[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a0];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a1];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a2];[3:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a3];[4:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a4];[a0][a1][a2][a3][a4]concat=n=5:v=0:a=1[out]","-map","[out]","-c:a","pcm_s16le",timeline],check=True)
-    make_music_bed(im,il,False,tempo_percent);make_music_bed(om,ol,True,tempo_percent)
-    gain=music_gain_fraction(gain_percent);delay=int((il+2+bl)*1000)
-    filt=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,adelay={delay}|{delay},volume={gain}[outro];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[intro][outro][voice]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
+    silence_specs=((silence_tail,1.5),(silence_gap,2.0),(silence_outro_tag,2.0),(silence_final,2.0))
+    for path,duration in silence_specs:
+        with wave.open(path,"wb") as f:
+            f.setnchannels(1);f.setsampwidth(2);f.setframerate(24000)
+            f.writeframes(bytes(int(24000*duration*2)))
+    sections=[intro,silence_tail,silence_gap,body,outro,silence_outro_tag,silence_final]
+    command=["ffmpeg","-y","-hide_banner","-loglevel","error"]
+    for path in sections:command.extend(["-i",path])
+    filters=";".join(f"[{i}:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[a{i}]" for i in range(len(sections)))
+    filters+=f";{''.join(f'[a{i}]' for i in range(len(sections)))}concat=n={len(sections)}:v=0:a=1[out]"
+    command.extend(["-filter_complex",filters,"-map","[out]","-c:a","pcm_s16le",timeline])
+    subprocess.run(command,check=True)
+    # The intro theme continues 1.5s beyond the spoken welcome, then the 2s gap begins.
+    make_music_bed(im,il+1.5,False,tempo_percent)
+    # The outro gets a 2s instrumental cadence before its final 2s of silence.
+    make_music_bed(om,ol+2.0,True,tempo_percent)
+    gain=music_gain_fraction(gain_percent)
+    outro_start=int((il+1.5+2.0+bl)*1000)
+    filt=f"[0:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,volume={gain}[intro];[1:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono,adelay={outro_start}|{outro_start},volume={gain}[outro];[2:a]aresample=24000,aformat=sample_fmts=s16:channel_layouts=mono[voice];[intro][outro][voice]amix=inputs=3:duration=longest:dropout_transition=0,alimiter=limit=0.96[out]"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",im,"-i",om,"-i",timeline,"-filter_complex",filt,"-map","[out]","-c:a","pcm_s16le",mixed],check=True)
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",mixed,"-af","atempo=1.1","-codec:a","libmp3lame","-b:a","96k",mp3],check=True)
-    for path in paths+[silence,silence_end,timeline,im,om,mixed]:
+    for path in paths+[silence_tail,silence_gap,silence_outro_tag,silence_final,timeline,im,om,mixed]:
         if os.path.exists(path):os.remove(path)
 
 def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
@@ -468,9 +506,10 @@ def remix_episode(base,filename,key,seen,now,gain_percent,tempo_percent):
     size=os.path.getsize(path_out)
     if size<10000:raise RuntimeError("Remixed MP3 is unexpectedly small.")
     title=html.unescape(title_match.group(1))
+    title=re.sub(r" \(Cyberpunk synth, [^)]+\)$","",title)
     gain_delta=(float(gain_percent)/144.0-1.0)*100.0
     gain_label=f"{'+' if gain_delta>=0 else ''}{gain_delta:.0f}% vs prior mix"
-    label=f"Cyberpunk synth, music {gain_label}"
+    label=f"Cyberpunk synth, melodic build, 2s outro pause, music {gain_label}"
     item=f'''<item><title>{esc(title)} ({esc(label)})</title>{description}
 <pubDate>{email.utils.format_datetime(now)}</pubDate>
 <enclosure url="{base}/episodes/{filename_out}" length="{size}" type="audio/mpeg"/>
