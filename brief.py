@@ -15,6 +15,7 @@ LOOKBACK_HOURS = 96
 SITE = os.environ.get("SITE_DIR", "site")
 MARKER = "<!-- EPISODES -->"
 TITLE = "Morning AI Engineering Brief"
+VOICE_COMPARE_DATE = "2026-11-17"
 DESCRIPTION = "A carefully curated daily audio brief on AI and the software development lifecycle for engineering leaders."
 FEEDS = [
     ("Pragmatic Engineer", "https://newsletter.pragmaticengineer.com/feed"),
@@ -289,8 +290,8 @@ def narration(items,now,key):
             raise RuntimeError("Published brief has no valid source IDs after recovery; refusing to publish an episode without sources.")
         brief["used_sources"]=ids
     return brief
-def audio(turns,key,wav):
-    voice_by_speaker={"Alex":"Algenib","Jordan":"Kore","Jasmine":"Aoede"}
+def audio(turns,key,wav,alex_voice="Algenib"):
+    voice_by_speaker={"Alex":alex_voice,"Jordan":"Kore","Jasmine":"Aoede"}
     style_by_speaker={
         "Alex":"Warm, friendly podcast-host delivery; conversational, naturally animated, and clear. Keep the selected voice's gravelly texture subtle and natural; avoid formal narration.",
         "Jordan":"Thoughtful, candid, grounded analyst; subtle conversational energy, clear delivery, measured emphasis.",
@@ -445,7 +446,7 @@ def estimated_speech_seconds(turns):
     words=sum(len(t.get("text","").split()) for t in turns)
     return max(2.0,words/2.2+0.4)
 
-def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=208,tempo_percent=120):
+def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent=208,tempo_percent=120,alex_voice="Algenib"):
     # Isolated TTS sections allow short musical tails, a clear intro gap, and an ending pause.
     paths=[os.path.join(SITE,"remix-"+n+".wav") for n in ("intro","body","outro")]
     intro,body,outro=paths
@@ -455,7 +456,7 @@ def render_episode_audio(intro_turns,body_turns,outro_turns,key,mp3,gain_percent
     timeline=os.path.join(SITE,"remix-voice.wav")
     im=os.path.join(SITE,"remix-intro-music.wav");om=os.path.join(SITE,"remix-outro-music.wav")
     mixed=os.path.join(SITE,"remix-mixed.wav")
-    audio(intro_turns,key,intro);audio(body_turns,key,body);audio(outro_turns,key,outro)
+    audio(intro_turns,key,intro,alex_voice);audio(body_turns,key,body,alex_voice);audio(outro_turns,key,outro,alex_voice)
     il=voice_duration(intro);bl=voice_duration(body);ol=voice_duration(outro)
     silence_specs=((silence_tail,1.5),(silence_gap,2.0),(silence_final,7.0))
     for path,duration in silence_specs:
@@ -601,7 +602,7 @@ def main():
     turns=brief["turns"];script=" ".join(t["text"].strip() for t in turns if t.get("text"))
     log(f"EDITORIAL TITLE {brief['title']}")
     log(f"SCRIPT {len(script.split())} words")
-    turns=[{**t,"text":re.sub(r"[*#_>]","",t.get("text","")).replace("—",", ").replace("–",", ")} for t in turns]
+    turns=[{**t,"text":re.sub(r"[*#_]","",t.get("text","")).replace("—",", ").replace("–",", ")} for t in turns]
     intro_turns=[
         {"speaker":"Alex","text":"Welcome to the Morning AI Engineering Brief. I'm Alex.","delivery":"natural"},
         {"speaker":"Jordan","text":"And I'm Jordan. Let's get into the AI developments that matter to engineering teams.","delivery":"natural"}
@@ -611,12 +612,10 @@ def main():
         {"speaker":"Jordan","text":"Thanks for listening, and we'll be back tomorrow with more insights on navigating the AI-driven SDLC.","delivery":"natural"}
     ]
     all_turns=intro_turns+turns+outro_turns
-    local=now.astimezone(ZoneInfo(TZ));fn=f"ai-brief-{local:%Y-%m-%d-%H%M}.mp3"
-    mp3=os.path.join(SITE,fn)
+    local=now.astimezone(ZoneInfo(TZ))
+    compare_voices=local.strftime("%Y-%m-%d")==VOICE_COMPARE_DATE
+    alex_voices=["Algenib","Rami"] if compare_voices else ["Algenib"]
     gain_percent=os.environ.get("MUSIC_GAIN_PERCENT","208")
-    render_episode_audio(intro_turns,turns,outro_turns,key,mp3,gain_percent,os.environ.get("MUSIC_TEMPO_PERCENT","120"))
-    size=os.path.getsize(mp3)
-    if size<10000:raise RuntimeError("Generated MP3 is unexpectedly small.")
     title=clean(brief["title"],160)
     used=set(int(n) for n in brief.get("used_sources",[]) if str(n).isdigit())
     used_items=[items[n-1] for n in sorted(used) if 1<=n<=len(items)]
@@ -624,13 +623,33 @@ def main():
     def transcript_text(value):
         # Keep spoken backchannel words, but hide TTS-only overlap and pause markup in RSS transcripts.
         value=re.sub(r"<(?:short|long pause)>","",value)
-        value=re.sub(r"\|([^|]+)\|",r"\1",value)
+        value=re.sub(r"\\|([^|]+)\\|",r"\\1",value)
         return value.strip()
     dialogue="".join(f'<p><strong>{esc(t.get("speaker",""))}:</strong> {esc(transcript_text(t.get("text","")))}</p>' for t in all_turns if transcript_text(t.get("text","")))
     notes=cdata(f"<p><strong>Episode transcript</strong></p>{dialogue}<p><strong>Sources</strong></p><ul>{links}</ul>")
-    episode=f'''<item><title>{esc(title)}</title><description>{notes}</description>
+    generated=0
+    for alex_voice in alex_voices:
+        suffix=f"-alex-{alex_voice.lower()}" if compare_voices else ""
+        fn=f"ai-brief-{local:%Y-%m-%d-%H%M}{suffix}.mp3"
+        mp3=os.path.join(SITE,fn)
+        try:
+            render_episode_audio(intro_turns,turns,outro_turns,key,mp3,gain_percent,os.environ.get("MUSIC_TEMPO_PERCENT","120"),alex_voice)
+        except Exception as exc:
+            if compare_voices and alex_voice=="Rami":
+                log(f"ALEX VOICE COMPARISON FAILED for Rami: {exc}")
+                continue
+            raise
+        size=os.path.getsize(mp3)
+        if size<10000:raise RuntimeError("Generated MP3 is unexpectedly small.")
+        display_title=f"{title} (Alex voice: {alex_voice})" if compare_voices else title
+        episode=f'''<item><title>{esc(display_title)}</title><description>{notes}</description>
 <pubDate>{email.utils.format_datetime(now)}</pubDate>
 <enclosure url="{base}/episodes/{fn}" length="{size}" type="audio/mpeg"/>
 <guid isPermaLink="false">{fn}</guid></item>'''
-    publish(base,episode,mp3,fn,items,seen,now,used_items);log("DONE")
+        publish(base,episode,mp3,fn,items,seen,now,used_items)
+        generated+=1
+        log(f"PUBLISHED Alex voice {alex_voice}: {fn}")
+    if generated==0:raise RuntimeError("No audio versions were generated.")
+    if compare_voices:log("ONE-DAY ALEX VOICE COMPARISON COMPLETE")
+    else:log("DONE")
 if __name__=="__main__":main()
