@@ -31,7 +31,7 @@ class WeeklyTests(unittest.TestCase):
         self.assertIn("I'd try this, it looks useful.", body)
 
     def test_exact_article_does_not_select_a_different_story(self):
-        env = {'OPENAI_API_KEY': 'test',
+        env = {'LINKEDIN_FREE_TIER_CONFIRMED': 'true', 'GEMINI_API_KEY': 'test',
                'LINKEDIN_ARTICLE_URL': 'https://newsletter.pragmaticengineer.com/p/example'}
         with patch.dict(os.environ, env, clear=True), \
              patch.object(weekly, 'article_text', return_value='source ' * 100), \
@@ -74,7 +74,7 @@ class WeeklyTests(unittest.TestCase):
 
     def test_dry_run_never_sends_or_logs_draft(self):
         output = io.StringIO()
-        with patch.dict(os.environ, {'OPENAI_API_KEY': 'test', 'GITHUB_RUN_ATTEMPT': '1'}, clear=True), \
+        with patch.dict(os.environ, {'LINKEDIN_FREE_TIER_CONFIRMED': 'true', 'GEMINI_API_KEY': 'test', 'GITHUB_RUN_ATTEMPT': '1'}, clear=True), \
              patch.object(weekly, 'collect_articles', return_value=self.articles), \
              patch.object(weekly, 'generate', return_value=self.draft), \
              patch.object(weekly, 'send_email') as send, contextlib.redirect_stdout(output):
@@ -84,19 +84,19 @@ class WeeklyTests(unittest.TestCase):
 
     def test_provider_errors_do_not_leak_content(self):
         output = io.StringIO()
-        with patch.dict(os.environ, {'OPENAI_API_KEY': 'test'}, clear=True), \
+        with patch.dict(os.environ, {'LINKEDIN_FREE_TIER_CONFIRMED': 'true', 'GEMINI_API_KEY': 'test'}, clear=True), \
              patch.object(weekly, 'collect_articles', return_value=self.articles), \
              patch.object(weekly, 'generate', side_effect=RuntimeError('PRIVATE DRAFT BODY')), contextlib.redirect_stderr(output):
             self.assertEqual(weekly.main([]), 1)
         self.assertNotIn('PRIVATE', output.getvalue())
 
-    def test_no_network_without_openai_api_key(self):
+    def test_no_network_without_free_tier_confirmation(self):
         with patch.dict(os.environ, {}, clear=True), patch.object(weekly, 'collect_articles') as collect, contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(weekly.main([]), 1)
             collect.assert_not_called()
 
     def test_reruns_refused(self):
-        with patch.dict(os.environ, {'GITHUB_RUN_ATTEMPT': '2'}, clear=True), patch.object(weekly, 'collect_articles') as collect, contextlib.redirect_stderr(io.StringIO()):
+        with patch.dict(os.environ, {'LINKEDIN_FREE_TIER_CONFIRMED': 'true', 'GITHUB_RUN_ATTEMPT': '2'}, clear=True), patch.object(weekly, 'collect_articles') as collect, contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(weekly.main([]), 1)
             collect.assert_not_called()
 
