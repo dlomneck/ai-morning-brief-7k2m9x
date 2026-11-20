@@ -56,7 +56,7 @@ Player changes are tested with Vitest unit tests and Playwright integration/end-
 
 ## Models and costs
 
-The podcast generator uses Gemini models for editorial selection, dialogue scripting, and two-speaker narration. Alex and Jordan have distinct delivery styles, with stronger energy reserved for turns about unusually consequential developments. FFmpeg applies a pitch-preserving 1.1× tempo increase to the finished audio. The show notes link only the sources discussed in that episode. Cover art is published with the feed. The separate LinkedIn draft workflow uses the OpenAI Responses API, with GPT-6.2 Sol by default and structured JSON output. OpenAI API usage is billed separately from ordinary ChatGPT use unless your plan includes eligible API credits. Model access, quotas, and prices can change. The workflows use GitHub Actions and Pages.
+The podcast generator uses Gemini models for editorial selection, dialogue scripting, and two-speaker narration. Alex and Jordan have distinct delivery styles, with stronger energy reserved for turns about unusually consequential developments. FFmpeg applies a pitch-preserving 1.1× tempo increase to the finished audio. The show notes link only the sources discussed in that episode. Cover art is published with the feed. The optional GitHub LinkedIn workflow uses Gemini. The recurring ChatGPT Scheduled task is managed separately and does not use the GitHub workflow. The workflows use GitHub Actions and Pages.
 
 ## Tuning
 
