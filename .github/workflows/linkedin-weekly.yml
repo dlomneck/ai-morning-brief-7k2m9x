@@ -1,6 +1,6 @@
 name: Weekly LinkedIn draft email
 
-# Keep manual runs available; the recurring run is managed by ChatGPT Scheduled.
+# Recurring runs are managed by ChatGPT Scheduled. Keep GitHub manual-only.
 on:
   workflow_dispatch:
     inputs:
@@ -37,10 +37,10 @@ jobs:
           python-version: '3.12'
       - name: Check privacy and delivery behavior without external calls
         run: python -m unittest discover -s tests -p 'test_linkedin_weekly.py'
-      - name: Generate with OpenAI and optionally email privately
+      - name: Generate with Gemini and optionally email privately
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LINKEDIN_FREE_TIER_CONFIRMED: ${{ vars.LINKEDIN_FREE_TIER_CONFIRMED }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
