@@ -69,11 +69,11 @@ jobs:
         with:
           path: .linkedin-delivery
           key: ${{ steps.period.outputs.key }}
-      - name: Generate and optionally email privately
+      - name: Generate with OpenAI and optionally email privately
         if: github.event_name != 'schedule' || steps.attempted.outputs.cache-hit != 'true'
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          LINKEDIN_FREE_TIER_CONFIRMED: ${{ vars.LINKEDIN_FREE_TIER_CONFIRMED }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
