@@ -115,17 +115,17 @@ npm test
 
 The same test command runs automatically in GitHub Actions for pushes and pull requests to `main`. The daily Python episode-generation pipeline does not have the same level of automated test coverage. Running it can contact external services and consume API quota, so do not treat `npm test` as a test of RSS providers, Gemini, text-to-speech, MP3 encoding, Apple Podcasts, or Tesla playback.
 
-The separate LinkedIn email feature has its own Python unit tests. It is not part of the podcast publication path. It uses OpenAI's Responses API and validates generated source evidence before it sends a private review email.
+The optional GitHub LinkedIn feature has its own Python unit tests. It is separate from podcast publishing and uses Gemini. Its GitHub Actions workflow is manual-only; the recurring task is managed separately in ChatGPT Scheduled.
 
 ## GitHub Actions, permissions, and secrets
 
-A **secret** is a credential stored by GitHub and supplied to a workflow while it runs. The podcast workflow needs the repository secret `GEMINI_API_KEY`. The LinkedIn draft workflow separately needs `OPENAI_API_KEY` and the SMTP secrets `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, and `LINKEDIN_EMAIL_TO`. The optional Actions variable `OPENAI_MODEL` overrides the default `gpt-6.2-sol`. API key usage is separate from ordinary ChatGPT plan usage. The source code does not contain credentials. Never paste keys into source files, documentation, a commit, or an Actions input.
+A **secret** is a credential stored by GitHub and supplied to a workflow while it runs. The podcast workflow needs the repository secret `GEMINI_API_KEY`. The optional manual LinkedIn workflow needs `GEMINI_API_KEY` and the repository variable `LINKEDIN_FREE_TIER_CONFIRMED=true`. SMTP secrets `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, and `LINKEDIN_EMAIL_TO` are required only when the manual run is configured to email the draft. The recurring ChatGPT Scheduled task is a separate service and does not use the GitHub workflow. The source code does not contain credentials. Never paste keys into source files, documentation, a commit, or an Actions input.
 
 The daily-brief and Publish player workflows need `contents: write` permission so their runner can update `gh-pages`. Player checks only need `contents: read`. GitHub also supplies a temporary `GITHUB_TOKEN` to workflows; the project uses it to push generated site files.
 
-The repository and Pages site are public. The feed, MP3s, episode transcripts, source links, and source-health counts can be viewed or downloaded by anyone. Only public story material should go to the models. Podcast generation sends public RSS excerpts to Gemini; the LinkedIn workflow sends fetched publisher article text to OpenAI. Do not add internal company documents, private feed URLs, credentials, or NAS details.
+The repository and Pages site are public. The feed, MP3s, episode transcripts, source links, and source-health counts can be viewed or downloaded by anyone. Only public story material should go to the models. Podcast generation and the optional GitHub LinkedIn workflow send public-source text to Gemini; the separate ChatGPT Scheduled task uses the sources specified in its instructions. Do not add internal company documents, private feed URLs, credentials, or NAS details.
 
-Free model quotas and provider terms can change. Free-tier availability is not a promise of unlimited or permanently free service. A scheduled run can fail because a source is unavailable, an API quota or model changes, network access fails, or an external service changes its behavior. The LinkedIn workflow logs safe error categories and HTTP status codes, not provider response bodies or draft content.
+Free model quotas and provider terms can change. Free-tier availability is not a promise of unlimited or permanently free service. A scheduled run can fail because a source is unavailable, an API quota or model changes, network access fails, or an external service changes its behavior. The manual LinkedIn workflow logs safe error categories and HTTP status codes, not provider response bodies or draft content.
 
 ## Where to look when something goes wrong
 
