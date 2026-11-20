@@ -1,9 +1,6 @@
 name: Weekly LinkedIn draft email
 
 on:
-  schedule:
-    - cron: "0 1 * * 5"
-      timezone: "America/New_York"
   workflow_dispatch:
     inputs:
       article_url:
@@ -49,7 +46,7 @@ jobs:
           from zoneinfo import ZoneInfo
           year, week, _ = datetime.now(ZoneInfo("America/New_York")).isocalendar()
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"key=linkedin-week-{year}-{week:02d}\n")
+              output.write(f"key=linkedin-week-{year}-{week:02d}\\n")
           PYCODE
       - name: Check scheduled attempt marker
         if: github.event_name == 'schedule'
