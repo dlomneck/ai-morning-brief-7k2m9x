@@ -31,7 +31,7 @@ The brief filters aggressively for relevance, then explores selected stories in 
 
 ## Public information and privacy
 
-This repository and the podcast feed are public. Anyone with the feed URL can listen and download episodes. Podcast generation sends public RSS titles, excerpts, and links to Gemini. The separate LinkedIn draft job fetches publisher article text and sends it to OpenAI. Use only public material; do not add company information or private sources. Model providers process submitted content under their own API terms and data controls.
+This repository and the podcast feed are public. Anyone with the feed URL can listen and download episodes. Podcast generation sends public RSS titles, excerpts, and links to Gemini. The optional GitHub LinkedIn draft workflow uses Gemini and is manual-only. The recurring LinkedIn draft is managed separately in ChatGPT Scheduled. Use only public material; do not add company information or private sources. Provider terms and data controls apply to submitted content.
 
 ## Setup
 
@@ -62,28 +62,13 @@ The podcast generator uses Gemini models for editorial selection, dialogue scrip
 
 Edit `FEEDS`, `PROMPT`, `LOOKBACK_HOURS`, or the model constants in `brief.py`. The cover art is in `artwork.svg`; the workflow converts it to podcast-compatible PNG for the feed.
 
-## Private weekly LinkedIn draft email
+## Weekly LinkedIn draft
 
-`linkedin_weekly.py` is independent of podcast generation and publishing. It reads the same feed list over a seven-day window, fetches up to 12 accessible publisher pages, and asks the OpenAI Responses API for one proposed 75–125-word post. It requests strict JSON-schema output, then applies the existing checks: cited source IDs must be valid and each selected source must have an exact supporting excerpt in the fetched text. This checks attribution, not independent truth or whether the proposed opinion is yours: review before posting. Inaccessible, paywalled or unsupported publisher URLs are skipped. If no useful story is selected, the email recommends skipping; there is no publicly stored evergreen post backlog.
+The recurring LinkedIn draft is managed by the separate ChatGPT Scheduled task. It reviews the approved public sources, writes one short draft for your review, and returns source links. It does not publish to LinkedIn.
 
-Generated text stays in process memory until sent as plain-text email. The script does not save posts, publish to LinkedIn, write job summaries, or create artifacts. The weekly workflow has read-only repository permissions and never touches `site` or `gh-pages`. Error logs show the request stage and HTTP status where available, but suppress response bodies and draft text. The workflow makes up to three attempts for transient network errors, HTTP 408/409/429, and server errors; it has no alternate model provider fallback. OpenAI's API still has rate limits and can have outages. Email and AI providers process and may retain content under their terms; do not provide confidential employer information. Only generic editorial instructions belong in this public repository.
+The GitHub workflow remains available for manual use only. It uses Gemini and can email a draft if you select `send_email`. It requires the `GEMINI_API_KEY` secret and `LINKEDIN_FREE_TIER_CONFIRMED=true` repository variable. The workflow has no schedule trigger. SMTP settings are needed only when you choose email delivery.
 
-### Configure the OpenAI draft workflow
-
-1. Create an OpenAI API key in the OpenAI API Platform. In repository **Settings → Secrets and variables → Actions → New repository secret**, add it as `OPENAI_API_KEY`. Never put the key in source, documentation, a commit, or an Actions input. API use is separate from the ChatGPT subscription; eligible Pro or Business subscribers may be able to claim API credits.
-2. The default model is `gpt-6.2-sol`. To override it, add the repository Actions variable `OPENAI_MODEL` with a model ID available to your API account. A key must have API access and available billing or credits.
-3. Choose an existing email provider that permits SMTP over TLS (port 465) within a verified free allowance. Add repository **secrets** `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, and `LINKEDIN_EMAIL_TO`. Use an app password where supported; never put credentials or the recipient in source files, issues, or workflow inputs. Some providers require OAuth instead of passwords; confirm provider compatibility before configuring.
-4. Run **Weekly LinkedIn draft email** with `send_email` unchecked to validate a generated draft in memory. This still uses the OpenAI API but does not expose or retain the draft for viewing.
-5. After that succeeds, run it with `send_email` checked to receive a review copy. Inspect your inbox and spam folder; SMTP acceptance does not prove inbox delivery. Do not automatically retry if delivery status is uncertain.
-6. Delivery is scheduled for Fridays at 1 AM America/New_York, with daylight saving handled by the workflow timezone. GitHub may delay scheduled runs. Manual runs remain available.
-
-Re-running the same GitHub run is refused to reduce duplicate mail. Separate manual dispatches can still send more than once; this pilot does not claim exactly-once delivery. Scheduled runs save a weekly attempt marker in the Actions cache before contacting providers. A matching marker skips the scheduled attempt, including after uncertain delivery; failed attempts require manual review. Cache eviction can remove this marker, so it is best-effort duplicate protection, not an exactly-once guarantee. No post body or subject needs to be stored. GitHub notification emails for failed podcast runs are not an SMTP service and cannot deliver the draft body.
-
-Drafts use simple, friendly language, short sentences and natural contractions. The mail formatter enforces straight apostrophes and removes em/en dashes even if the model ignores the prompt.
-
-To redo a specific story, start a new manual **Weekly LinkedIn draft email** run, enter its exact publisher URL in `article_url`, and select `send_email`. This uses only that article, instead of selecting a new story. Locally, use `python3 linkedin_weekly.py --article-url URL --send` with the usual environment settings. Start a fresh run rather than GitHub's Re-run button, which remains blocked to prevent duplicate deliveries.
-
-Offline checks: `python3 -m unittest discover -s tests -p 'test_linkedin_weekly.py'`. No dependencies beyond Python's standard library are needed for this feature.
+Generated copy should be reviewed before posting. Neither workflow publishes directly to LinkedIn.
 
 ### Gmail sender
 
