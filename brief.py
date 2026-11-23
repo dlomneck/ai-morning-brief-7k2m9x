@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build a Gemini-narrated daily AI engineering brief and public RSS feed."""
-import base64, email.utils, html, json, math, os, re, struct, subprocess, sys, time, wave
+import base64, email.utils, html, json, math, os, random, re, struct, subprocess, sys, time, wave
 import urllib.error, urllib.parse, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -56,28 +56,79 @@ The brief has a separate short spoken show introduction and sign-off added after
 Produce JSON only with keys publish (boolean), title (specific and useful, never date-only), turns (array of {speaker: Alex, Jordan, or Jasmine; text: spoken text; delivery: natural or emphatic}), and used_sources (array of the numbered source item IDs actually discussed). If publish is false, turns and used_sources should be empty and title should briefly explain no episode was made. Spoken language only inside turns: no headings, bullets, URLs, markdown, or em-dashes."""
 
 def log(s): print(s, flush=True)
-def request_json(url, payload, key, timeout=180, retries=2):
+
+def _retry_after_seconds(error, detail):
+    headers = getattr(error, "headers", None)
+    value = headers.get("Retry-After") if headers else None
+    if value:
+        try:
+            return max(0.0, float(value))
+        except ValueError:
+            try:
+                return max(0.0, email.utils.parsedate_to_datetime(value).timestamp() - time.time())
+            except (TypeError, ValueError, OverflowError):
+                pass
+    try:
+        body = json.loads(detail)
+        for item in body.get("error", {}).get("details", []):
+            if "RetryInfo" in item.get("@type", ""):
+                match = re.fullmatch(r"(\d+(?:\.\d+)?)s", str(item.get("retryDelay", "")))
+                if match:
+                    return max(0.0, float(match.group(1)))
+    except (json.JSONDecodeError, AttributeError, TypeError, ValueError):
+        pass
+    return None
+
+def _backoff_seconds(attempt, status=None):
+    if status == 503:
+        base, ceiling = 20.0, 180.0
+    elif status == 429:
+        base, ceiling = 5.0, 60.0
+    else:
+        base, ceiling = 3.0, 45.0
+    cap = min(base * (2 ** attempt), ceiling)
+    # Equal jitter avoids synchronized retry bursts without retrying too early.
+    return random.uniform(cap / 2, cap)
+
+def request_json(url, payload, key, timeout=180, retries=2, max_elapsed=8 * 60):
     req = urllib.request.Request(url, data=json.dumps(payload).encode(),
         headers={"Content-Type":"application/json","x-goog-api-key":key}, method="POST")
+    deadline = time.monotonic() + max_elapsed
+    transient_codes = (408, 425, 429, 500, 502, 503, 504)
     for attempt in range(retries + 1):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                return json.loads(r.read().decode())
-        except urllib.error.HTTPError as e:
-            detail = e.read().decode("utf-8","replace")[:1200]
-            if e.code in (429,500,502,503,504) and attempt < retries:
-                # Gemini 503s indicate temporary capacity pressure; short retries
-                # are not enough during a traffic spike, so back off progressively.
-                delay = min(15 * (2 ** attempt), 120) if e.code == 503 else min(2 ** (attempt + 1), 30)
-                log(f"Gemini HTTP {e.code}; retrying in {delay}s (attempt {attempt + 2}/{retries + 1}).")
-                time.sleep(delay); continue
-            raise RuntimeError(f"Gemini HTTP {e.code}: {detail}") from e
-        except (urllib.error.URLError, TimeoutError) as e:
-            if attempt < retries:
-                delay = min(2 ** (attempt + 1), 30)
-                log(f"Gemini network error; retrying in {delay}s (attempt {attempt + 2}/{retries + 1}).")
-                time.sleep(delay); continue
-            raise RuntimeError(f"Gemini network error: {e}") from e
+            with urllib.request.urlopen(req, timeout=min(timeout, remaining)) as response:
+                return json.loads(response.read().decode())
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", "replace")[:1200]
+            if error.code not in transient_codes or attempt >= retries:
+                raise RuntimeError(f"Gemini HTTP {error.code}: {detail}") from error
+            delay = _backoff_seconds(attempt, error.code)
+            server_delay = _retry_after_seconds(error, detail)
+            if server_delay is not None:
+                delay = max(delay, server_delay)
+            remaining = deadline - time.monotonic()
+            if delay >= remaining:
+                raise RuntimeError(
+                    f"Gemini HTTP {error.code}; server retry delay exceeds remaining retry budget."
+                ) from error
+            log(f"Gemini HTTP {error.code}; retrying in {delay:.1f}s "
+                f"(attempt {attempt + 2}/{retries + 1}).")
+            time.sleep(delay)
+        except (urllib.error.URLError, TimeoutError) as error:
+            if attempt >= retries:
+                raise RuntimeError(f"Gemini network error: {error}") from error
+            delay = _backoff_seconds(attempt)
+            remaining = deadline - time.monotonic()
+            if delay >= remaining:
+                raise RuntimeError("Gemini network error; retry budget exhausted.") from error
+            log(f"Gemini network error; retrying in {delay:.1f}s "
+                f"(attempt {attempt + 2}/{retries + 1}).")
+            time.sleep(delay)
+    raise RuntimeError(f"Gemini request exceeded its {max_elapsed}s retry budget.")
 def fetch(url):
     req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 (compatible; MorningAIBrief/1.0; +https://github.com/dlomneck/ai-morning-brief-7k2m9x)"})
     for attempt in range(3):
@@ -211,7 +262,7 @@ def repair_source_ids(brief,items,key):
     for model in (TEXT_MODEL,TEXT_MODEL_FALLBACK):
         url=f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         try:
-            response=request_json(url,payload,key,retries=4)
+            response=request_json(url,payload,key,retries=5)
         except RuntimeError as e:
             if "Gemini HTTP 503:" not in str(e):raise
             log(f"{model} unavailable during source recovery.")
@@ -257,7 +308,7 @@ def narration(items,now,key):
     for model in (TEXT_MODEL,TEXT_MODEL_FALLBACK):
         url=f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         try:
-            r=request_json(url,payload,key,retries=4)
+            r=request_json(url,payload,key,retries=5)
         except RuntimeError as e:
             if "Gemini HTTP 503:" not in str(e):raise
             log(f"{model} remained unavailable after retries.")
