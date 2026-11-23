@@ -2,9 +2,9 @@ name: Daily AI Brief
 
 on:
   schedule:
-    # Primary run at 10:17 PM Eastern; backup at 11:17 PM on weekdays.
+    # Primary run at 10:17 PM Eastern; backup at 11:17 PM Sunday through Thursday for Monday-Friday commutes.
     # The job skips if an episode for that local date already exists, so a delayed first run cannot create duplicates.
-    - cron: "17 22,23 * * 1-5"
+    - cron: "17 22,23 * * 0-4"
       timezone: "America/New_York"
   workflow_dispatch:
     inputs:
