@@ -45,7 +45,7 @@ A third recurring personality, Jasmine, is an occasional guest with a subtle, na
 
 Make them sound like people thinking together, not alternating readers. Let a host ask a genuine follow-up, answer it with evidence and nuance, and then react or probe further. Connect stories with natural transitions or an occasional callback. Give Alex the curious-guide role and Jordan the practical-engineer role, while allowing both to change their minds. Bring Jasmine in only when a thoughtful challenge adds something. Use occasional friendly banter that grows out of the engineering tradeoff under discussion, not generic jokes.
 
-Let the conversation breathe. Add a small number of natural thinking hesitations such as "Hmm," "Uh, let me think," or "I see what you mean," only where a person might actually say them; vary them and do not sprinkle them into every turn. For meaningful claims or after a thoughtful question, include the inline TTS cue <short pause> occasionally so the point can land. Use <long pause> only very rarely. The pause cues are audio directions and should not appear in the published transcript.
+Let the conversation sound imperfect in ordinary human ways, not like a teleprompter. In a full episode, include roughly 8–12 small, audible conversational habits across the whole cast: occasional "uhm," "hmm," "mm," "well," a thought that trails off and restarts, a brief wording stumble, or a speaker correcting how they phrased a thought. Put these directly into the spoken dialogue so TTS voices actually say them. Keep them varied, brief, and tied to real moments of thought or reaction; do not add a filler to every turn, fake factual mistakes, or force a stutter. Let people pause after a good question or before a careful answer. Use commas, dashes, and occasional ellipses in spoken text to invite natural thinking pauses. Never output stage directions such as <short pause> or <long pause> in the dialogue; they show up as ugly text in transcripts.
 
 Gemini multi-speaker TTS supports brief backchannels and overlap using pipe-delimited reaction text inside a speaker turn, for example |oh, right| or |wait, that's interesting|. Use this sparingly, perhaps once or twice in an episode, only for a short, natural reaction between two configured hosts. Keep overlap brief, intelligible, and away from facts, citations, or important numbers. Never make the hosts shout over each other or stage interruptions. If the moment does not clearly benefit from overlap, use ordinary turn-taking.
 
@@ -344,9 +344,9 @@ def narration(items,now,key):
 def audio(turns,key,wav,alex_voice="Algenib"):
     voice_by_speaker={"Alex":alex_voice,"Jordan":"Kore","Jasmine":"Aoede"}
     style_by_speaker={
-        "Alex":"Warm, friendly podcast-host delivery; conversational, naturally animated, and clear. Keep the selected voice's gravelly texture subtle and natural; avoid formal narration.",
-        "Jordan":"Thoughtful, candid, grounded analyst; subtle conversational energy, clear delivery, measured emphasis.",
-        "Jasmine":"Incisive, curious guest; collegial and lightly wry, with a subtle, natural contemporary British English accent. Keep the accent understated and never caricatured."
+        "Alex":"Warm, friendly podcast-host delivery; conversational, naturally animated, and clear. Keep the selected voice's gravelly texture subtle and natural; avoid formal narration. Sound like a person thinking aloud: relaxed varied pacing, brief audible pauses after ellipses, and light natural breaths between thoughts.",
+        "Jordan":"Thoughtful, candid, grounded analyst; subtle conversational energy, clear delivery, measured emphasis. Sound like a person thinking aloud: relaxed varied pacing, brief audible pauses after ellipses, and light natural breaths between thoughts.",
+        "Jasmine":"Incisive, curious guest; collegial and lightly wry, with a subtle, natural contemporary British English accent. Keep the accent understated and never caricatured. Sound like a person thinking aloud: relaxed varied pacing, brief audible pauses after ellipses, and light natural breaths between thoughts."
     }
 
     # Gemini multi-speaker TTS accepts at most two configured speakers per request.
@@ -377,6 +377,8 @@ def audio(turns,key,wav,alex_voice="Algenib"):
             if speaker not in chunk_speakers:
                 chunk_speakers.append(speaker)
             text=turn.get("text","").strip()
+            text=re.sub(r"<\s*short\s+pause\s*>","...",text,flags=re.IGNORECASE)
+            text=re.sub(r"<\s*long\s+pause\s*>","......",text,flags=re.IGNORECASE)
             if not text:continue
             delivery=turn.get("delivery","natural")
             if delivery not in ("natural","emphatic"):delivery="natural"
@@ -676,7 +678,7 @@ def main():
     links="".join(f'<li><a href="{esc(items[n-1]["link"])}">{esc(items[n-1]["title"])}</a> ({esc(items[n-1]["source"])})</li>' for n in sorted(used) if 1<=n<=len(items))
     def transcript_text(value):
         # Keep spoken backchannel words, but hide TTS-only overlap and pause markup in RSS transcripts.
-        value=re.sub(r"<(?:short|long pause)>","",value)
+        value=re.sub(r"<\s*(?:short|long)\s+pause\s*>","",value,flags=re.IGNORECASE)
         value=re.sub(r"\|([^|]+)\|",r"\1",value)
         return value.strip()
     dialogue="".join(f'<p><strong>{esc(t.get("speaker",""))}:</strong> {esc(transcript_text(t.get("text","")))}</p>' for t in all_turns if transcript_text(t.get("text","")))
