@@ -59,21 +59,31 @@ export function writeState(state, storage = globalThis.localStorage) {
   catch { return false; }
 }
 
-// RSS items are displayed in feed order (newest first). When an episode ends,
-// walk toward newer unplayed episodes first, then wrap to the newest remaining
-// unplayed episode so an older backlog item cannot strand newer releases.
+// RSS items are displayed newest first. Continue from the current item toward
+// newer releases one row at a time, skipping played episodes; wrap to the oldest
+// remaining unplayed episode only after reaching the top of the feed.
 export function nextUnplayedEpisode(episodes, currentId, isListened) {
   const currentIndex = episodes.findIndex(episode => episode.id === currentId);
-  const newer = episodes.slice(0, Math.max(0, currentIndex)).find(episode => !isListened(episode.id));
-  if (newer) return newer;
-  return episodes.find(episode => episode.id !== currentId && !isListened(episode.id)) ?? null;
+  if (currentIndex < 0) return episodes.find(episode => !isListened(episode.id)) ?? null;
+  for (let offset = 1; offset < episodes.length; offset += 1) {
+    const index = (currentIndex - offset + episodes.length) % episodes.length;
+    const candidate = episodes[index];
+    if (!isListened(candidate.id)) return candidate;
+  }
+  return null;
 }
 
 export function sanitizeDescription(markup, targetDocument = globalThis.document) {
   const source = new DOMParser().parseFromString(markup ?? "", "text/html");
   const output = targetDocument.createDocumentFragment();
   const appendSafe = (parent, node) => {
-    if (node.nodeType === 3) { parent.append(targetDocument.createTextNode(node.textContent ?? "")); return; }
+    if (node.nodeType === 3) {
+      const text = (node.textContent ?? "")
+        .replace(/<\\s*(?:short|long)\\s+pause\\s*>/gi, " ")
+        .replace(/[ \\t]{2,}/g, " ");
+      if (text) parent.append(targetDocument.createTextNode(text));
+      return;
+    }
     if (node.nodeType !== 1) return;
     if (!ALLOWED_TAGS.has(node.tagName)) {
       for (const child of node.childNodes) appendSafe(parent, child);
