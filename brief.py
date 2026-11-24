@@ -386,7 +386,10 @@ def audio(turns,key,wav,alex_voice="Algenib"):
             content.append({"type":"text","text":text,"annotations":[{"type":"speech_metadata","speaker":speaker,"style":style}]})
         if not content:
             continue
-        payload={"model":TTS_MODEL,"input":[{"type":"user_input","content":content}],"response_format":{"type":"audio"},"generation_config":{"speech_config":{"speakers":[{"speaker":name,"voice":voice_by_speaker[name]} for name in chunk_speakers]}}}
+        configured_speakers=list(chunk_speakers)
+        if len(configured_speakers)<2:
+            configured_speakers.append(next(name for name in voice_by_speaker if name not in configured_speakers))
+        payload={"model":TTS_MODEL,"input":[{"type":"user_input","content":content}],"response_format":{"type":"audio"},"generation_config":{"speech_config":{"speakers":[{"speaker":name,"voice":voice_by_speaker[name]} for name in configured_speakers]}}}
         r=request_json("https://generativelanguage.googleapis.com/v1beta/interactions",payload,key,300)
         data=None
         for step in r.get("steps",[]):
