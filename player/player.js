@@ -79,8 +79,8 @@ export function sanitizeDescription(markup, targetDocument = globalThis.document
   const appendSafe = (parent, node) => {
     if (node.nodeType === 3) {
       const text = (node.textContent ?? "")
-        .replace(/<\\s*(?:short|long)\\s+pause\\s*>/gi, " ")
-        .replace(/[ \\t]{2,}/g, " ");
+        .replace(/<\s*(?:short|long)\s+pause\s*>/gi, " ")
+        .replace(/[ \t]{2,}/g, " ");
       if (text) parent.append(targetDocument.createTextNode(text));
       return;
     }
